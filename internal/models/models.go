@@ -1,8 +1,6 @@
 package models
 
-import (
-	"time"
-)
+import "time"
 
 type UrlInfo struct {
 	Id int`json:"id"`

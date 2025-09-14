@@ -1,28 +1,27 @@
 package repository
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/boretsotets/url-shortening-service/internal/models"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+
 	"context"
-	"log"
 )
 
 type UrlRepository struct {
 	db *pgxpool.Pool
+	logger *zap.Logger
 }
 
-func NewUrlRepository(db *pgxpool.Pool) *UrlRepository {
-	return &UrlRepository{db: db}
+func NewUrlRepository(db *pgxpool.Pool, logger *zap.Logger) *UrlRepository {
+	return &UrlRepository{db: db, logger: logger}
 }
 
 func (r *UrlRepository)RepositoryPost(data models.UrlInfo) (models.UrlInfo, error) {
-	var newUrl models.UrlInfo
+	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(), 
 	"INSERT INTO urls (Url, ShortCode, CreatedAt, UpdatedAt) VALUES ($1, $2, $3, $4) RETURNING Id, Url, ShortCode, CreatedAt, UpdatedAt", 
-	data.Url, data.ShortCode, data.CreatedAt, data.UpdatedAt).Scan(&newUrl.Id, &newUrl.Url, &newUrl.ShortCode, &newUrl.CreatedAt, &newUrl.UpdatedAt)
-	log.Println(data.Url, data.CreatedAt)
-	log.Println(newUrl.Id, newUrl.Url, newUrl.ShortCode, newUrl.CreatedAt, newUrl.UpdatedAt, newUrl.AccessCount)
-	return newUrl, err
+	data.Url, data.ShortCode, data.CreatedAt, data.UpdatedAt).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt)
+	return newData, err
 }

@@ -7,31 +7,30 @@ import (
 	"github.com/boretsotets/url-shortening-service/internal/handler"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"context"
-	"log"
-	"os"
 )
 
+// ошибка на добавлении времени в таймстампы
+
 func main() {
-	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-    	log.Fatal("Failed to open log file:", err)
-	}
-		log.SetOutput(file)
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+	logger.Info("app started", zap.String("env", "dev"))
 
 	ctx := context.Background()
 	dsn := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
 	// localhost to be changed to contanier name
 	pool, err := database.InitDb(ctx, dsn)
 	if err != nil {
-		log.Fatal("cannot connect to database")
+		logger.Fatal("cannot connect to database")
 	}
 	defer pool.Close()
 
-	urlRepo := repository.NewUrlRepository(pool)
-	urlService := service.NewUrlService(urlRepo)
-	urlHandler := handler.NewUrlHandler(urlService)
+	urlRepo := repository.NewUrlRepository(pool, logger)
+	urlService := service.NewUrlService(urlRepo, logger)
+	urlHandler := handler.NewUrlHandler(urlService, logger)
 
 
 	router := gin.Default()
