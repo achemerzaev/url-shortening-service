@@ -40,3 +40,24 @@ func GenerateShortCode() string {
 	}
 	return string(ran_str)
 }
+
+func (s *UrlService)ServiceGet(requestedCode string) (models.UrlInfo, error) {
+	newData, err := s.repo.RepositoryGet(requestedCode)
+	return newData, err
+}
+
+func (s *UrlService)ServicePut(requestedCode string, longUrl string) (models.UrlInfo, error) {
+	updatedAt := time.Now()
+	newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt)
+	return newData, err
+}
+
+func (s *UrlService)ServiceDelete(requestedCode string) (error) {
+	err := s.repo.RepositoryDelete(requestedCode)
+	return err
+}
+
+func (s *UrlService)ServiceGetStats(requestedCode string) (models.UrlInfo, error) {
+	newData, err := s.repo.RepositoryGetStats(requestedCode)
+	return newData, err
+}

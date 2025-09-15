@@ -36,6 +36,10 @@ func main() {
 	router := gin.Default()
 
 	router.POST("/shorten", urlHandler.HandlerPost)
+	router.GET("/shorten/:shortcode", urlHandler.HandlerGet)
+	router.PUT("/shorten/:shortcode", urlHandler.HandlerPut)
+	router.DELETE("/shorten/:shortcode", urlHandler.HandlerDelete)
+	router.GET("/shorten/:shortcode/stats", urlHandler.HandlerGetStats)
 
 	router.Run("localhost:8080")
 }
