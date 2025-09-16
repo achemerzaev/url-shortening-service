@@ -8,6 +8,7 @@ import (
 
 	"time"
 	"math/rand"
+	"strings"
 )
 
 type UrlService struct {
@@ -23,6 +24,9 @@ func (s *UrlService)ServicePost(data models.UrlInfo) (models.UrlInfo, error) {
 	data.CreatedAt = time.Now()
 	data.UpdatedAt = time.Now()
 	data.ShortCode = GenerateShortCode()
+	if !strings.HasPrefix(data.Url, "http://") && !strings.HasPrefix(data.Url, "https://") {
+		data.Url = "https://" + data.Url
+	}
 	newInsertion, err := s.repo.RepositoryPost(data)
 	return newInsertion, err
 }
@@ -41,9 +45,11 @@ func GenerateShortCode() string {
 	return string(ran_str)
 }
 
-func (s *UrlService)ServiceGet(requestedCode string) (models.UrlInfo, error) {
+func (s *UrlService)ServiceGet(requestedCode string) (string, error) {
+	var newData *models.UrlInfo
 	newData, err := s.repo.RepositoryGet(requestedCode)
-	return newData, err
+	newData.AccessCount += 1
+	return newData.Url, err
 }
 
 func (s *UrlService)ServicePut(requestedCode string, longUrl string) (models.UrlInfo, error) {

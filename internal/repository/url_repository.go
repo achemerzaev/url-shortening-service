@@ -23,16 +23,24 @@ func (r *UrlRepository)RepositoryPost(data models.UrlInfo) (models.UrlInfo, erro
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(), 
 	"INSERT INTO urls (Url, ShortCode, CreatedAt, UpdatedAt, AccessCount) VALUES ($1, $2, $3, $4, $5) RETURNING Id, Url, ShortCode, CreatedAt, UpdatedAt", 
-	data.Url, data.ShortCode, data.CreatedAt, data.UpdatedAt).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount)
+	data.Url, data.ShortCode, data.CreatedAt, data.UpdatedAt, data.AccessCount).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt)
 	return newData, err
 }
 
-func (r *UrlRepository)RepositoryGet(requestedCode string) (models.UrlInfo, error) {
+func (r *UrlRepository)RepositoryGet(requestedCode string) (*models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(), 
 	"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt FROM urls WHERE shortcode = $1", 
 	requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt)
-	return newData, err
+	r.logger.Info("checking struct", zap.Int("id here ", newData.Id), zap.String("url here", newData.Url), zap.String("short code here", newData.ShortCode))
+
+	if err == nil {
+		var count int
+		err = r.db.QueryRow(context.Background(), 
+		"UPDATE urls SET AccessCount = AccessCount + 1 WHERE shortcode = $1 RETURNING AccessCount", 
+		requestedCode).Scan(&count)
+	}
+	return &newData, err
 }
 
 func (r *UrlRepository)RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time) (models.UrlInfo, error) {

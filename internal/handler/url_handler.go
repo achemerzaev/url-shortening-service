@@ -44,13 +44,13 @@ func (h *UrlHandler)HandlerPost(c *gin.Context) {
 
 func (h *UrlHandler)HandlerGet(c *gin.Context) {
 	requestedCode := c.Param("shortcode")
-	newData, err := h.service.ServiceGet(requestedCode)
+	longUrl, err := h.service.ServiceGet(requestedCode)
 	if err != nil {
 		h.logger.Error("database retrieval error", zap.Error(err))
 		c.String(http.StatusNotFound, "not found")
 		return
 	}
-	c.IndentedJSON(http.StatusOK, newData)
+	c.Redirect(http.StatusFound, longUrl)
 	return
 }
 
