@@ -3,6 +3,8 @@ package handler
 import (
 	"github.com/boretsotets/url-shortening-service/internal/service"
 	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/boretsotets/url-shortening-service/internal/authorization"
+
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -24,14 +26,23 @@ func NewUrlHandler(s *service.UrlService, logger *zap.Logger) *UrlHandler {
 
 func (h *UrlHandler)HandlerPost(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	token := c.GetHeader("Authorization")
+	ownerID, err := authorization.ValidateJWT(token)
+	if err != nil {
+		h.logger.Error("invalid access token", zap.Error(err))
+		c.String(http.StatusForbidden, "invalid access token")
+		return
+	}
+
 	var userUrl models.UrlInfo
 
-	err := json.NewDecoder(c.Request.Body).Decode(&userUrl)
+	err = json.NewDecoder(c.Request.Body).Decode(&userUrl)
 	if err != nil {
 		h.logger.Error("request decoding error", zap.Error(err))
 		c.String(http.StatusBadRequest, "problem decoding json")
 		return
 	}
+	userUrl.OwnerID = ownerID
 	newUrl, err := h.service.ServicePost(userUrl)
 	if err != nil {
 		h.logger.Error("database insertion error", zap.Error(err))
@@ -43,8 +54,16 @@ func (h *UrlHandler)HandlerPost(c *gin.Context) {
 }
 
 func (h *UrlHandler)HandlerGet(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	ownerID, err := authorization.ValidateJWT(token)
+	if err != nil {
+		h.logger.Error("invalid access token", zap.Error(err))
+		c.String(http.StatusForbidden, "invalid access token")
+		return
+	}
+	
 	requestedCode := c.Param("shortcode")
-	longUrl, err := h.service.ServiceGet(requestedCode)
+	longUrl, err := h.service.ServiceGet(requestedCode, ownerID)
 	if err != nil {
 		h.logger.Error("database retrieval error", zap.Error(err))
 		c.String(http.StatusNotFound, "not found")
@@ -56,8 +75,16 @@ func (h *UrlHandler)HandlerGet(c *gin.Context) {
 
 func (h *UrlHandler)HandlerPut(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	token := c.GetHeader("Authorization")
+	ownerID, err := authorization.ValidateJWT(token)
+	if err != nil {
+		h.logger.Error("invalid access token", zap.Error(err))
+		c.String(http.StatusForbidden, "invalid access token")
+		return
+	}
+	
 	var newUrl map[string]string
-	err := json.NewDecoder(c.Request.Body).Decode(&newUrl)
+	err = json.NewDecoder(c.Request.Body).Decode(&newUrl)
 	if err != nil {
 		h.logger.Error("json decoding error", zap.Error(err))
 		c.String(http.StatusInternalServerError, "not found")
@@ -71,7 +98,7 @@ func (h *UrlHandler)HandlerPut(c *gin.Context) {
 
 	requestedCode := c.Param("shortcode")
 
-	newData, err := h.service.ServicePut(requestedCode, newUrl["url"])
+	newData, err := h.service.ServicePut(requestedCode, newUrl["url"], ownerID)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
@@ -87,8 +114,16 @@ func (h *UrlHandler)HandlerPut(c *gin.Context) {
 }
 
 func (h *UrlHandler)HandlerDelete(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	ownerID, err := authorization.ValidateJWT(token)
+	if err != nil {
+		h.logger.Error("invalid access token", zap.Error(err))
+		c.String(http.StatusForbidden, "invalid access token")
+		return
+	}
+	
 	requestedCode := c.Param("shortcode")
-	err := h.service.ServiceDelete(requestedCode)
+	err = h.service.ServiceDelete(requestedCode, ownerID)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
@@ -103,8 +138,16 @@ func (h *UrlHandler)HandlerDelete(c *gin.Context) {
 }
 
 func (h *UrlHandler)HandlerGetStats(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	ownerID, err := authorization.ValidateJWT(token)
+	if err != nil {
+		h.logger.Error("invalid access token", zap.Error(err))
+		c.String(http.StatusForbidden, "invalid access token")
+		return
+	}
+	
 	requestedCode := c.Param("shortcode")
-	statData, err := h.service.ServiceGetStats(requestedCode)
+	statData, err := h.service.ServiceGetStats(requestedCode, ownerID)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
