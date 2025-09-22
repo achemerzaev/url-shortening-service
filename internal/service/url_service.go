@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"strings"
+	"context"
 )
 
 type UrlService struct {
@@ -56,10 +57,23 @@ func GenerateShortCode() (string, error) {
 }
 
 func (s *UrlService)ServiceGet(requestedCode string, ownerID int) (string, error) {
-	var newData *models.UrlInfo
-	newData, err := s.repo.RepositoryGet(requestedCode, ownerID)
-	newData.AccessCount += 1
-	return newData.Url, err
+	var newData models.UrlInfo
+	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
+	if err != nil {
+		newData, err = s.repo.RepositoryGet(requestedCode, ownerID)
+		if err != nil {
+			s.logger.Error("error getting redirect link from db")
+			return "", err
+		}
+		err = s.redisrepo.SaveUrl(context.Background(), newData)
+		if err != nil {
+			s.logger.Error("error saving link to redis")
+			return "", err
+		}
+		longUrl = newData.Url
+	}
+
+	return longUrl, err
 }
 
 func (s *UrlService)ServicePut(requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
@@ -67,16 +81,47 @@ func (s *UrlService)ServicePut(requestedCode string, longUrl string, ownerID int
 		longUrl = "https://" + longUrl
 	}
 	updatedAt := time.Now()
-	newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt, ownerID)
+	newData, err := s.redisrepo.UpdateUrl(context.Background(), requestedCode, longUrl, updatedAt, ownerID)
+	if err != nil {
+		s.logger.Info("error updating url in redis", zap.Error(err))
+		newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt, ownerID)
+		if err != nil {
+			s.logger.Error("error updating url in db", zap.Error(err))
+			return newData, err
+		}
+		err = s.redisrepo.SaveUrl(context.Background(), newData)
+		if err != nil {
+			s.logger.Error("error saving url in redis", zap.Error(err))
+		}
+	}
 	return newData, err
 }
 
 func (s *UrlService)ServiceDelete(requestedCode string, ownerID int) (error) {
 	err := s.repo.RepositoryDelete(requestedCode, ownerID)
+	if err != nil {
+		return err
+	}
+	err = s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
 	return err
 }
 
 func (s *UrlService)ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
-	newData, err := s.repo.RepositoryGetStats(requestedCode, ownerID)
+	var newData models.UrlInfo
+	newData, err := s.redisrepo.GetUrlStats(context.Background(), requestedCode, ownerID)
+	if err != nil {
+		s.logger.Info("error retrieving stats from redis", zap.Error(err))
+		newData, err := s.repo.RepositoryGetStats(requestedCode, ownerID)
+		if err != nil {
+			s.logger.Error("error getting stats from db", zap.Error(err))
+			return newData, err
+		}
+		err = s.redisrepo.SaveUrl(context.Background(), newData)
+		if err != nil {
+			s.logger.Error("error saving url in redis", zap.Error(err))
+			return newData, err
+		}
+	}
+
 	return newData, err
 }
