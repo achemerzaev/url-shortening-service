@@ -6,6 +6,8 @@ import (
 	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
 	"github.com/boretsotets/url-shortening-service/internal/service"
 	"github.com/boretsotets/url-shortening-service/internal/handler"
+	"github.com/boretsotets/url-shortening-service/internal/middleware"
+
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -51,7 +53,9 @@ func main() {
 	userHandler := handler.NewUserHandler(userService, logger)
 
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(middleware.RequestIdMiddleware())
+	router.Use(middleware.LoggerMiddleware(logger))
 
 	router.POST("/shorten", urlHandler.HandlerPost)
 	router.GET("/shorten/:shortcode", urlHandler.HandlerGet)

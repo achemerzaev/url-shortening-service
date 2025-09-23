@@ -21,6 +21,7 @@ import (
 	"testing"
 	"context"
 	"strings"
+	"fmt"
 )
 
 type TestApp struct {
@@ -163,6 +164,8 @@ func TestCrudOperations(t *testing.T) {
 
 	var requestedData models.UrlInfo
 	json.NewDecoder(w3.Body).Decode(&requestedData)
+	fmt.Print("date here: ", requestedData.UpdatedAt)
+	fmt.Print("################################################")
 
 	require.Equal(t, http.StatusOK, w3.Code)
 	require.Equal(t, data.Id, requestedData.Id)

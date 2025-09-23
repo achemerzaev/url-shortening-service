@@ -9,7 +9,6 @@ import (
 	"time"
 	"context"
 	"strconv"
-	"encoding/json"
 )
 
 type RedisRepository struct {
@@ -67,18 +66,30 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 }
 
 func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error) {
-	result, err := r.client.Get(ctx, "short:"+shortCode).Result()
+	result, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 	var data models.UrlInfo
 	if err != nil || len(result) == 0 {
 		r.logger.Error("Error getting url stats from redis", zap.Error(err))
 		return data, err
 	}
-	json.Unmarshal([]byte(result), &data)
 
-	if data.Id != ownerID {
+	data.OwnerID, _ = strconv.Atoi(result["owner_id"])
+	if data.OwnerID != ownerID {
 		r.logger.Error("Clinet don't have access to this task", zap.Error(err))
 		return data, err
 	}
+	data.Id, _ = strconv.Atoi(result["id"])
+	data.Url = result["url"]
+	data.ShortCode = shortCode
+	data.CreatedAt, err = time.Parse(time.RFC3339Nano, result["created_at"])
+	if err != nil {
+		r.logger.Error("error parsing time", zap.Error(err))
+	}
+	data.UpdatedAt, err = time.Parse(time.RFC3339Nano, result["updated_at"])
+	if err != nil {
+		r.logger.Error("error parsing time", zap.Error(err))
+	}
+	data.AccessCount, _ = strconv.Atoi(result["access_count"])
 	return data, nil
 }
 
@@ -123,6 +134,6 @@ func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, owner
 		r.logger.Error("Error checking owner_id equality", zap.Error(err))
 		return err
 	}
-	err = r.client.HDel(ctx, "short:"+shortCode).Err()
+	err = r.client.Del(ctx, "short:"+shortCode).Err()
 	return err
 }
