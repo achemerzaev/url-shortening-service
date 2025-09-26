@@ -1,11 +1,17 @@
 package middleware
 
 import (
+	"github.com/boretsotets/url-shortening-service/internal/authorization"
+	"github.com/boretsotets/url-shortening-service/internal/models"
+
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"time"
+	"net/http"
+	"fmt"
+	"strings"
 )
 
 func RequestIdMiddleware() gin.HandlerFunc {
@@ -36,12 +42,55 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 
 		logger.Info("request completed",
 			zap.String("request_id", reqID.(string)),
-			zap.String("method",method),
+			zap.String("method", method),
 			zap.String("path", path),
 			zap.String("ip", clientIP),
 			zap.Int("status", status),
 			zap.Int("size", size),
 			zap.Duration("latency", latency),
 		)
+	}
+}
+
+func AuthorizationMiddleware(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		clientID, err := authorization.ValidateJWT(token)
+		if err != nil {
+			logger.Error("token validation error", zap.Error(err))
+			c.AbortWithStatusJSON(http.StatusForbidden, 
+				gin.H{"error":"invalid access token"})
+			return
+		}
+		c.Set("clientID", clientID)
+		c.Next()
+	}
+}
+
+func JSONValidationMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var v interface{}
+
+		switch {
+		case c.Request.Method == "POST" && c.Request.URL.Path == "/shorten":
+			v = &models.PostRequestJSON{}
+			fmt.Println(">>> Correct case is choosed")
+		case c.Request.Method == "PUT" && strings.HasPrefix(c.Request.URL.Path, "/shorten/"):
+			v = &models.PutRequestJSON{}
+		default:
+			c.Next()
+			return
+		}
+
+		if err := c.ShouldBindJSON(v); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, 
+			gin.H{
+				"error":"json validation error",
+				"message":"invalid input"})
+			return
+		}
+
+		c.Set("jsonBody", v)
+		c.Next()
 	}
 }

@@ -2,32 +2,33 @@ package e2e
 
 import (
 	"github.com/boretsotets/url-shortening-service/database"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/boretsotets/url-shortening-service/internal/authorization"
 	"github.com/boretsotets/url-shortening-service/internal/handler"
 	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-
+	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
+	"github.com/boretsotets/url-shortening-service/internal/repository"
+	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/boretsotets/url-shortening-service/internal/middleware"
 
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
-	"encoding/json"
-	"testing"
-	"context"
 	"strings"
-	"fmt"
+	"testing"
 )
 
 type TestApp struct {
-	Router *gin.Engine
+	Router   *gin.Engine
 	UserRepo *repository.UserRepository
-	UrlRepo *repository.UrlRepository
+	UrlRepo  *repository.UrlRepository
 }
 
 func setupTestApp(t *testing.T) *TestApp {
@@ -35,7 +36,7 @@ func setupTestApp(t *testing.T) *TestApp {
 
 	ctx := context.Background()
 
-	dsn := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	dsn := "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 	pool, err := database.InitDb(ctx, dsn)
 	require.NoError(t, err)
 
@@ -55,22 +56,29 @@ func setupTestApp(t *testing.T) *TestApp {
 	userService := service.NewUserService(userRepo, redisRepo, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 
+	router := gin.New()
+	router.Use(middleware.RequestIdMiddleware())
+	router.Use(middleware.LoggerMiddleware(logger))
+	router.Use(middleware.JSONValidationMiddleware())
 
-	router := gin.Default()
-
-	router.POST("/shorten", urlHandler.HandlerPost)
-	router.GET("/shorten/:shortcode", urlHandler.HandlerGet)
-	router.PUT("/shorten/:shortcode", urlHandler.HandlerPut)
-	router.DELETE("/shorten/:shortcode", urlHandler.HandlerDelete)
-	router.GET("/shorten/:shortcode/stats", urlHandler.HandlerGetStats)
 	router.POST("/register", userHandler.HandlerRegister)
 	router.POST("/login", userHandler.HandlerLogin)
 	router.POST("/refresh", userHandler.HandlerRefresh)
 
+	private := router.Group("/")
+	private.Use(middleware.AuthorizationMiddleware(logger))
+	{
+		private.POST("/shorten", urlHandler.HandlerPost)
+		private.GET("/shorten/:shortcode", urlHandler.HandlerGet)
+		private.PUT("/shorten/:shortcode", urlHandler.HandlerPut)
+		private.DELETE("/shorten/:shortcode", urlHandler.HandlerDelete)
+		private.GET("/shorten/:shortcode/stats", urlHandler.HandlerGetStats)
+	}
+
 	return &TestApp{
-		Router: router,
+		Router:   router,
 		UserRepo: userRepo,
-		UrlRepo: urlRepo,
+		UrlRepo:  urlRepo,
 	}
 }
 
@@ -87,7 +95,7 @@ func TestTokenFunctionality(t *testing.T) {
 
 	// проверка, что токены были созданы
 	var tokens models.Tokens
-	json.NewDecoder(w.Body).Decode(&tokens)
+	_ = json.NewDecoder(w.Body).Decode(&tokens)
 	require.NotEmpty(t, tokens.AccessToken)
 	require.NotEmpty(t, tokens.RefreshToken)
 
@@ -120,7 +128,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w, req)
 
 	var tokens models.Tokens
-	json.NewDecoder(w.Body).Decode(&tokens)
+	_ = json.NewDecoder(w.Body).Decode(&tokens)
 
 	// проверка создания короткой ссылки
 	w1 := httptest.NewRecorder()
@@ -130,7 +138,7 @@ func TestCrudOperations(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w1.Code)
 	var data models.UrlInfo
-	json.NewDecoder(w1.Body).Decode(&data)
+	_ = json.NewDecoder(w1.Body).Decode(&data)
 
 	require.NotEmpty(t, data.Id)
 	require.Equal(t, data.Url, "https://mail.ru")
@@ -152,7 +160,12 @@ func TestCrudOperations(t *testing.T) {
 	require.Equal(t, http.StatusFound, w2.Code)
 
 	res := w2.Result()
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Printf("error closing body: %s", err)
+		}
+	}()
+
 	loc, _ := res.Location()
 	require.Equal(t, "https://mail.ru", loc.String())
 
@@ -163,7 +176,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w3, req3)
 
 	var requestedData models.UrlInfo
-	json.NewDecoder(w3.Body).Decode(&requestedData)
+	_ = json.NewDecoder(w3.Body).Decode(&requestedData)
 	fmt.Print("date here: ", requestedData.UpdatedAt)
 	fmt.Print("################################################")
 
@@ -180,10 +193,10 @@ func TestCrudOperations(t *testing.T) {
 	w4 := httptest.NewRecorder()
 	req4 := httptest.NewRequest("PUT", "/shorten/"+data.ShortCode, strings.NewReader(`{"url": "go.dev"}`))
 	req4.Header.Set("Authorization", tokens.AccessToken)
-	app.Router.ServeHTTP(w4, req4)	
+	app.Router.ServeHTTP(w4, req4)
 
 	var changedData models.UrlInfo
-	json.NewDecoder(w4.Body).Decode(&changedData)
+	_ = json.NewDecoder(w4.Body).Decode(&changedData)
 
 	require.Equal(t, http.StatusOK, w4.Code)
 	require.Equal(t, requestedData.Id, changedData.Id)
@@ -199,9 +212,8 @@ func TestCrudOperations(t *testing.T) {
 	req5 := httptest.NewRequest("DELETE", "/shorten/"+data.ShortCode, nil)
 	req5.Header.Set("Authorization", tokens.AccessToken)
 	app.Router.ServeHTTP(w5, req5)
-	
+
 	require.Equal(t, http.StatusNoContent, w5.Code)
 	_, err := app.UrlRepo.RepositoryGet(data.ShortCode, data.OwnerID)
 	require.Error(t, err)
 }
-

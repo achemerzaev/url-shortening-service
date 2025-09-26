@@ -3,12 +3,12 @@ package redisrepo
 import (
 	"github.com/boretsotets/url-shortening-service/internal/models"
 
-	"go.uber.org/zap"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 
-	"time"
 	"context"
 	"strconv"
+	"time"
 )
 
 type RedisRepository struct {
@@ -28,20 +28,23 @@ func (r *RedisRepository) GetRefreshToken(ctx context.Context, userID string) (s
 	return r.client.Get(ctx, "refresh:"+userID).Result()
 }
 
-func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) (error) {
+func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) error {
 	err := r.client.HSet(ctx, "short:"+data.ShortCode, map[string]interface{}{
-		"id": data.Id,
-		"url": data.Url,
-		"created_at": data.CreatedAt,
-		"updated_at": data.UpdatedAt,
-		"access_count": data.AccessCount+1,
-		"owner_id": data.OwnerID,
+		"id":           data.Id,
+		"url":          data.Url,
+		"created_at":   data.CreatedAt,
+		"updated_at":   data.UpdatedAt,
+		"access_count": data.AccessCount + 1,
+		"owner_id":     data.OwnerID,
 	}).Err()
 	return err
 }
 
 func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error) {
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
+	if err == redis.Nil {
+		return "", err
+	}
 	if err != nil {
 		r.logger.Error("Error getting owner_id from redis", zap.Error(err))
 		return "", err
@@ -123,7 +126,7 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 	return data, nil
 }
 
-func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, ownerID int) (error) {
+func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, ownerID int) error {
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
 	if err != nil {
 		r.logger.Error("Error getting owner_id from redis", zap.Error(err))

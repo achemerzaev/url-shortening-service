@@ -1,13 +1,12 @@
 package handler
 
 import (
-	"go.uber.org/zap"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
+	"github.com/boretsotets/url-shortening-service/internal/authorization"
 	"github.com/boretsotets/url-shortening-service/internal/models"
 	"github.com/boretsotets/url-shortening-service/internal/service"
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-
 
 	"encoding/json"
 	"net/http"
@@ -15,14 +14,14 @@ import (
 
 type UserHandler struct {
 	service *service.UserService
-	logger *zap.Logger
+	logger  *zap.Logger
 }
 
 func NewUserHandler(s *service.UserService, logger *zap.Logger) *UserHandler {
 	return &UserHandler{service: s, logger: logger}
 }
 
-func (h *UserHandler)HandlerRegister(c *gin.Context) {
+func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	var newUser models.User
 	err := json.NewDecoder(c.Request.Body).Decode(&newUser)
@@ -42,23 +41,27 @@ func (h *UserHandler)HandlerRegister(c *gin.Context) {
 
 }
 
-func (h *UserHandler)HandlerLogin(c *gin.Context) {
+func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	var loginUser models.User
 	err := json.NewDecoder(c.Request.Body).Decode(&loginUser)
+	if err != nil {
+		h.logger.Error("error decoding json", zap.Error(err))
+		c.String(http.StatusBadRequest, "json error")
+		return
+	}
 
-	
 	tokens, err := h.service.ServiceLogin(loginUser)
 	if err != nil {
 		h.logger.Error("error logging in", zap.Error(err))
 		c.String(http.StatusInternalServerError, "login error")
-		return 
+		return
 	}
 
 	c.IndentedJSON(http.StatusOK, tokens)
 }
 
-func (h *UserHandler)HandlerRefresh(c *gin.Context) {
+func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 
 	var refreshtoken map[string]string

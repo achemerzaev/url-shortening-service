@@ -10,7 +10,7 @@ import (
 
 // Секретный пароль, использующийся для
 // подписи JWT токенов
-var jwtKey = []byte("bigsecret")// []byte(os.Getenv("JWT_SECRET"))
+var jwtKey = []byte("bigsecret") // []byte(os.Getenv("JWT_SECRET"))
 
 // GenerateJWT генерирует новый токен авторизации для пользователя.
 // Включает идентификатор пользователя и время жизни токена - 1 час. В
@@ -19,7 +19,7 @@ var jwtKey = []byte("bigsecret")// []byte(os.Getenv("JWT_SECRET"))
 func GenerateJWT(userId int, ttl time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userId,
-		"exp": time.Now().Add(ttl).Unix(),
+		"exp":     time.Now().Add(ttl).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

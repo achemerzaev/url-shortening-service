@@ -1,25 +1,40 @@
 package models
 
-import "time"
+import (
+	"time"
+)
+
 
 type UrlInfo struct {
-	Id int`json:"id"`
-	Url string`json:"url"`
-	ShortCode string`json:"shortcode"`
-	CreatedAt time.Time`json:"createdAt"`
-	UpdatedAt time.Time`json:"updatedAt"`
-	AccessCount int`json:"accessed"`
-	OwnerID int`json:"owner_id"`
+	Id          int       `json:"id"`
+	Url         string    `json:"url"`
+	ShortCode   string    `json:"shortcode"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	AccessCount int       `json:"accessed"`
+	OwnerID     int       `json:"owner_id"`
 }
 
 type User struct {
-	Id int`json:"id"`
-	Name string`json:"name"`
-	Email string`json:"email"`
-	Password string`json:"password"`
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type Tokens struct {
-	AccessToken string`json:"access_token"`
-	RefreshToken string`json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type PostRequestJSON struct {
+	Url string`json:"url" binding:"required"`
+}
+
+type PutRequestJSON struct {
+	Url string `json:"url" validate:"required"`
+}
+
+type DeleteRequestJSON struct {
+	ShortCode string `json:"short_code" binding:"required"`
 }

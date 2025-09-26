@@ -2,21 +2,19 @@ package main
 
 import (
 	"github.com/boretsotets/url-shortening-service/database"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/service"
 	"github.com/boretsotets/url-shortening-service/internal/handler"
 	"github.com/boretsotets/url-shortening-service/internal/middleware"
-
+	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
+	"github.com/boretsotets/url-shortening-service/internal/repository"
+	"github.com/boretsotets/url-shortening-service/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
 	"context"
+	"log"
 )
 
-// кеширование шорткодов
-// мидлвер для логера, рейт лимитинга
 // лучше коды возвратов на обработке ошибок
 // докеры
 // ci/cd
@@ -24,12 +22,21 @@ import (
 // прометеус и графана мб
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalf("error creating logger: %s", err)
+	}
+
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			log.Printf("error syncing logger: %s", err)
+		}
+	}()
+
 	logger.Info("app started", zap.String("env", "dev"))
 
 	ctx := context.Background()
-	dsn := "postgres://postgres:secret@localhost:5432/postgres?sslmode=disable"
+	dsn := "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 	// localhost to be changed to contanier name
 	pool, err := database.InitDb(ctx, dsn)
 	if err != nil {
@@ -52,10 +59,12 @@ func main() {
 	userService := service.NewUserService(userRepo, redisRepo, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 
-
 	router := gin.New()
 	router.Use(middleware.RequestIdMiddleware())
 	router.Use(middleware.LoggerMiddleware(logger))
+	router.Use(middleware.AuthorizationMiddleware(logger))
+	router.Use(middleware.JSONValidationMiddleware())
+	// router use other Middleware
 
 	router.POST("/shorten", urlHandler.HandlerPost)
 	router.GET("/shorten/:shortcode", urlHandler.HandlerGet)
@@ -67,5 +76,8 @@ func main() {
 	router.POST("/login", userHandler.HandlerLogin)
 	router.POST("/refresh", userHandler.HandlerRefresh)
 
-	router.Run("localhost:8080")
+	err = router.Run("localhost:8080")
+	if err != nil {
+		logger.Fatal("Router starting error: ", zap.Error(err))
+	}
 }

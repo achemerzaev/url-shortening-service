@@ -1,30 +1,30 @@
 package service
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
 	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
+	"github.com/boretsotets/url-shortening-service/internal/repository"
 
 	"go.uber.org/zap"
 
-	"time"
+	"context"
 	"crypto/rand"
 	"math/big"
 	"strings"
-	"context"
+	"time"
 )
 
 type UrlService struct {
-	repo *repository.UrlRepository
+	repo      *repository.UrlRepository
 	redisrepo *redisrepo.RedisRepository
-	logger *zap.Logger
+	logger    *zap.Logger
 }
 
 func NewUrlService(r *repository.UrlRepository, redisr *redisrepo.RedisRepository, logger *zap.Logger) *UrlService {
 	return &UrlService{repo: r, redisrepo: redisr, logger: logger}
 }
 
-func (s *UrlService)ServicePost(data models.UrlInfo) (models.UrlInfo, error) {
+func (s *UrlService) ServicePost(data models.UrlInfo) (models.UrlInfo, error) {
 	data.CreatedAt = time.Now()
 	data.UpdatedAt = data.CreatedAt
 	code, err := GenerateShortCode()
@@ -42,21 +42,21 @@ func (s *UrlService)ServicePost(data models.UrlInfo) (models.UrlInfo, error) {
 const chars = "1234567890abcdefghijklmnopqrstuvwxyz"
 
 func GenerateShortCode() (string, error) {
-    length := 6
-    ran_str := make([]byte, length)
+	length := 6
+	ran_str := make([]byte, length)
 
-    // Generating Random string
-    for i := range ran_str {
+	// Generating Random string
+	for i := range ran_str {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
 		if err != nil {
 			return "", err
 		}
-        ran_str[i] = chars[n.Int64()]
+		ran_str[i] = chars[n.Int64()]
 	}
 	return string(ran_str), nil
 }
 
-func (s *UrlService)ServiceGet(requestedCode string, ownerID int) (string, error) {
+func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, error) {
 	var newData models.UrlInfo
 	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *UrlService)ServiceGet(requestedCode string, ownerID int) (string, error
 	return longUrl, err
 }
 
-func (s *UrlService)ServicePut(requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
+func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
 	if !strings.HasPrefix(longUrl, "http://") && !strings.HasPrefix(longUrl, "https://") {
 		longUrl = "https://" + longUrl
 	}
@@ -97,7 +97,7 @@ func (s *UrlService)ServicePut(requestedCode string, longUrl string, ownerID int
 	return newData, err
 }
 
-func (s *UrlService)ServiceDelete(requestedCode string, ownerID int) (error) {
+func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
 	err := s.repo.RepositoryDelete(requestedCode, ownerID)
 	if err != nil {
 		return err
@@ -106,11 +106,11 @@ func (s *UrlService)ServiceDelete(requestedCode string, ownerID int) (error) {
 	return err
 }
 
-func (s *UrlService)ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
+func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	newData, err := s.redisrepo.GetUrlStats(context.Background(), requestedCode, ownerID)
 	if err != nil {
-		s.logger.Info("error retrieving stats from redis", zap.Error(err))
+		s.logger.Info("stats not found in redis", zap.Error(err))
 		newData, err := s.repo.RepositoryGetStats(requestedCode, ownerID)
 		if err != nil {
 			s.logger.Error("error getting stats from db", zap.Error(err))
