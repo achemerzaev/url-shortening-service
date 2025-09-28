@@ -60,11 +60,17 @@ func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, erro
 	var newData models.UrlInfo
 	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
 	if err != nil {
-		newData, err = s.repo.RepositoryGet(requestedCode, ownerID)
+		newData, err = s.repo.RepositoryGet(requestedCode)
 		if err != nil {
 			s.logger.Error("error getting redirect link from db")
 			return "", err
 		}
+		if newData.OwnerID != ownerID {
+			s.logger.Error("user has no access to this row")
+			return "", errors.New("forbidden: user does not own this resource")
+		}
+
+
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
 			s.logger.Error("error saving link to redis")
@@ -86,24 +92,30 @@ func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID in
 		s.logger.Info("error updating url in redis", zap.Error(err))
 		newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt, ownerID)
 		if err != nil {
-			s.logger.Error("error updating url in db", zap.Error(err))
+			s.logger.Info("error updating url in db", zap.Error(err))
 			return newData, err
 		}
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
-			s.logger.Error("error saving url in redis", zap.Error(err))
+			s.logger.Info("error saving url in redis", zap.Error(err))
+			return newData, err
 		}
 	}
-	return newData, err
+	return newData, nil
 }
 
 func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
-	err := s.repo.RepositoryDelete(requestedCode, ownerID)
+	err := s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
+	if err != nil {
+		if !strings.Contains(err.Error(), "nil") {
+			return err
+		}
+	}
+	err = s.repo.RepositoryDelete(requestedCode, ownerID)
 	if err != nil {
 		return err
 	}
-	err = s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
-	return err
+	return nil
 }
 
 func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {

@@ -1,0 +1,2 @@
+ALTER TABLE urls
+DROP CONSTRAINT unique_url;

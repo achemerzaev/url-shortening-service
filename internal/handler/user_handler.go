@@ -8,8 +8,8 @@ import (
 	"github.com/boretsotets/url-shortening-service/internal/models"
 	"github.com/boretsotets/url-shortening-service/internal/service"
 
-	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 type UserHandler struct {
@@ -23,18 +23,22 @@ func NewUserHandler(s *service.UserService, logger *zap.Logger) *UserHandler {
 
 func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	var newUser models.User
-	err := json.NewDecoder(c.Request.Body).Decode(&newUser)
-	if err != nil {
-		h.logger.Error("json decoding error", zap.Error(err))
-		c.String(http.StatusInternalServerError, "not found")
+	newUser, exists := c.Get("jsonBody")
+	if exists != true {
+		h.logger.Info("error retrieving jsonBody from context")
+		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	_, tokens, err := h.service.ServiceRegister(newUser)
+	_, tokens, err := h.service.ServiceRegister(*newUser.(*models.PostUserRegistration))
 	if err != nil {
-		h.logger.Error("error inserting user", zap.Error(err))
-		c.String(http.StatusInternalServerError, "error inserting user")
+		if strings.Contains(err.Error(), "duplicate") {
+			h.logger.Error("key duplicate error", zap.Error(err))
+			c.String(http.StatusConflict, "user with this email already exists")	
+		} else {
+			h.logger.Error("error inserting user", zap.Error(err))
+			c.String(http.StatusInternalServerError, "error inserting user")
+		}
 		return
 	}
 	c.IndentedJSON(http.StatusCreated, tokens)
@@ -43,18 +47,25 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 
 func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	var loginUser models.User
-	err := json.NewDecoder(c.Request.Body).Decode(&loginUser)
-	if err != nil {
-		h.logger.Error("error decoding json", zap.Error(err))
-		c.String(http.StatusBadRequest, "json error")
+	loginUser, exists := c.Get("jsonBody")
+	if exists != true {
+		h.logger.Info("error retrieving jsonBody from context")
+		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
+	var userInfo models.User
+	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email, 
+	loginUser.(*models.PostUserLogin).Password
 
-	tokens, err := h.service.ServiceLogin(loginUser)
+	tokens, err := h.service.ServiceLogin(userInfo)
 	if err != nil {
-		h.logger.Error("error logging in", zap.Error(err))
-		c.String(http.StatusInternalServerError, "login error")
+		if strings.Contains(err.Error(), "no rows") {
+			h.logger.Error("user does not exist", zap.Error(err))
+			c.String(http.StatusNotFound, "username or password are not correct")
+		} else {
+			h.logger.Error("error logging in", zap.Error(err))
+			c.String(http.StatusInternalServerError, "login error")	
+		}
 		return
 	}
 
@@ -63,23 +74,24 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 
 func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	h.logger.Info(">>> i enter this function")
 
-	var refreshtoken map[string]string
-	err := json.NewDecoder(c.Request.Body).Decode(&refreshtoken)
-	if err != nil {
-		h.logger.Error("error decoding json", zap.Error(err))
-		c.String(http.StatusInternalServerError, "error decoding json")
+
+	refreshToken, exists := c.Get("jsonBody")
+	if exists != true {
+		h.logger.Info("error retrieving jsonBody from context")
+		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	userID, err := authorization.ValidateJWT(refreshtoken["refreshtoken"])
+	userID, err := authorization.ValidateJWT(refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
 		h.logger.Error("error validating token", zap.Error(err))
-		c.String(http.StatusInternalServerError, "error validating token")
+		c.String(http.StatusUnauthorized, "error validating token")
 		return
 	}
 
-	tokens, err := h.service.ServiceRefresh(userID, refreshtoken["refreshtoken"])
+	tokens, err := h.service.ServiceRefresh(userID, refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
 		h.logger.Error("error refreshing token", zap.Error(err))
 		c.String(http.StatusInternalServerError, "error refreshing token")

@@ -28,11 +28,11 @@ func (r *UrlRepository) RepositoryPost(data models.UrlInfo) (models.UrlInfo, err
 	return newData, err
 }
 
-func (r *UrlRepository) RepositoryGet(requestedCode string, ownerID int) (models.UrlInfo, error) {
+func (r *UrlRepository) RepositoryGet(requestedCode string) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
-		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1 AND owner_id = $2",
-		requestedCode, ownerID).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
+		requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
 	r.logger.Info("checking struct", zap.Int("id here ", newData.Id), zap.String("url here", newData.Url), zap.String("short code here", newData.ShortCode))
 	return newData, err
 }

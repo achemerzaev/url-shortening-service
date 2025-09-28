@@ -18,7 +18,7 @@ func NewUserRepository(db *pgxpool.Pool, logger *zap.Logger) *UserRepository {
 	return &UserRepository{db: db, logger: logger}
 }
 
-func (r *UserRepository) RepoInsertUser(newUser models.User) (models.User, error) {
+func (r *UserRepository) RepoInsertUser(newUser models.PostUserRegistration) (models.User, error) {
 	var checkInsertedInfo models.User
 	err := r.db.QueryRow(context.Background(),
 		"INSERT INTO url_users (Name, Email, Password) VALUES ($1, $2, $3) RETURNING Id, Name, Email",

@@ -25,22 +25,18 @@ func (h *UrlHandler) HandlerPost(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	clientID, exists := c.Get("clientID")
 	if exists != true {
-		h.logger.Fatal("error retrieving clientID")
+		h.logger.Info("error retrieving clientID from context")
+		c.String(http.StatusInternalServerError, "internal server error")
+		return
 	}
-	//var userUrl models.UrlInfo
 
 	userUrl, exists := c.Get("jsonBody")
 	if exists != true {
-		h.logger.Fatal("error retrieving jsonBody")
-	}
-	/*
-	err = json.NewDecoder(c.Request.Body).Decode(&userUrl)
-	if err != nil {
-		h.logger.Error("request decoding error", zap.Error(err))
-		c.String(http.StatusBadRequest, "problem decoding json")
+		h.logger.Info("error retrieving jsonBody from context")
+		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
-	*/
+	
 	var newUrl models.UrlInfo
 	newUrl.Url = userUrl.(*models.PostRequestJSON).Url
 	newUrl.OwnerID = clientID.(int)
@@ -62,10 +58,18 @@ func (h *UrlHandler) HandlerGet(c *gin.Context) {
 	requestedCode := c.Param("shortcode")
 
 	longUrl, err := h.service.ServiceGet(requestedCode, clientID.(int))
+
 	if err != nil {
-		h.logger.Error("database retrieval error", zap.Error(err))
-		c.String(http.StatusNotFound, "not found")
-		return
+		if strings.Contains("redis", err.Error()) {
+			h.logger.Warn("Error saving url in redis")
+		} else if strings.Contains("own this resource") {
+			h.logger.Error("user has no access to resource")
+			c.String(http.StatusForbidden, "user has no access to this resource")
+		} else { 
+			h.logger.Error("database retrieval error", zap.Error(err))
+			c.String(http.StatusNotFound, "not found")
+			return
+		}
 	}
 	c.Redirect(http.StatusFound, longUrl)
 }
@@ -83,29 +87,17 @@ func (h *UrlHandler) HandlerPut(c *gin.Context) {
 	if exists != true {
 		h.logger.Fatal("error retrieving jsonBody")
 	}
-	/*
-	err = json.NewDecoder(c.Request.Body).Decode(&newUrl)
-	if err != nil {
-		h.logger.Error("json decoding error", zap.Error(err))
-		c.String(http.StatusInternalServerError, "not found")
-		return
-	}
-	if _, ok := newUrl["url"]; !ok {
-		h.logger.Error("json decoding error", zap.Error(err))
-		c.String(http.StatusBadRequest, "please provide new url in json")
-		return
-	}
-	*/
+
 	requestedCode := c.Param("shortcode")
 
 	newData, err := h.service.ServicePut(requestedCode, newUrl.(*models.PutRequestJSON).Url, clientID.(int))
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
+		if strings.Contains(err.Error(), "no rows")  {
 			h.logger.Error("short url not found", zap.Error(err))
 			c.String(http.StatusNotFound, "short url not found")
 		} else {
 			h.logger.Error("url updating error", zap.Error(err))
-			c.String(http.StatusBadRequest, "url updating error")
+			c.String(http.StatusInternalServerError, "url updating error")
 		}
 		return
 	}

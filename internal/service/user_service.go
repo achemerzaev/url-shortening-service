@@ -24,20 +24,20 @@ func NewUserService(r *repository.UserRepository, redisr *redisrepo.RedisReposit
 	return &UserService{repo: r, redisrepo: redisr, logger: logger}
 }
 
-func (s *UserService) ServiceRegister(newUser models.User) (models.User, models.Tokens, error) {
+func (s *UserService) ServiceRegister(newUser models.PostUserRegistration) (models.User, models.Tokens, error) {
 	var insertedUser models.User
 	var tokens models.Tokens
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
 	err := bcrypt.CompareHashAndPassword(hash, []byte(newUser.Password))
 	if err != nil {
-		return newUser, tokens, err
+		return insertedUser, tokens, err
 	}
 
 	newUser.Password = string(hash)
 	insertedUser, err = s.repo.RepoInsertUser(newUser)
 	if err != nil {
-		return newUser, tokens, err
+		return insertedUser, tokens, err
 	}
 
 	tokens.AccessToken, err = authorization.GenerateJWT(insertedUser.Id, 1*time.Hour)
