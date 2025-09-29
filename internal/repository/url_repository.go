@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"context"
+	"errors"
 	"time"
 )
 
@@ -37,26 +38,37 @@ func (r *UrlRepository) RepositoryGet(requestedCode string) (models.UrlInfo, err
 	return newData, err
 }
 
-func (r *UrlRepository) RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error) {
+func (r *UrlRepository) RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
-		"UPDATE urls SET url = $1, updatedAt = $2 WHERE shortcode = $3 AND owner_id = $4 RETURNING Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id",
-		longurl, updatedAt, requestedCode, ownerID).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+		"UPDATE urls SET url = $1, updatedAt = $2 WHERE shortcode = $3 RETURNING Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id",
+		longurl, updatedAt, requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
 	return newData, err
 }
 
 func (r *UrlRepository) RepositoryDelete(requestedCode string, ownerID int) error {
-	var checkDeletedUrl string
+	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
-		"DELETE FROM urls WHERE shortcode = $1 AND owner_id = $2 RETURNING url",
-		requestedCode, ownerID).Scan(&checkDeletedUrl)
+		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
+		requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+	if err != nil {
+		return err
+	}
+	if newData.OwnerID != ownerID {
+		return errors.New("forbidden: user does not own this resource")
+	}
+
+	var deletedUrl string
+	err = r.db.QueryRow(context.Background(),
+		"DELETE FROM urls WHERE shortcode = $1 RETURNING url",
+		requestedCode).Scan(&deletedUrl)
 	return err
 }
 
-func (r *UrlRepository) RepositoryGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
+func (r *UrlRepository) RepositoryGetStats(requestedCode string) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
-		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1 AND owner_id = $2",
-		requestedCode, ownerID).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
+		requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
 	return newData, err
 }

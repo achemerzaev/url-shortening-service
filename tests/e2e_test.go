@@ -312,7 +312,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w5, req5)
 
 	require.Equal(t, http.StatusNoContent, w5.Code)
-	_, err := app.UrlRepo.RepositoryGet(data.ShortCode, data.OwnerID)
+	_, err := app.UrlRepo.RepositoryGet(data.ShortCode)
 	require.Error(t, err)
 }
 
@@ -465,5 +465,60 @@ func TestInvalidJSON(t *testing.T) {
 	app.Router.ServeHTTP(w2, req2)	
 	require.Equal(t, http.StatusBadRequest, w2.Code)
 
+}
+
+/*
+func TestRedis(t *testing.T) {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/register", strings.NewReader(`{"name":"a", "email":"bbb", "password":"c"}`))
+	req.Header.Set("Content-Type", "application/json")
+	app.Router.ServeHTTP(w, req)
+
+	var tokens models.Tokens
+	_ = json.NewDecoder(w.Body).Decode(&tokens)
+
+	// создание короткой ссылки
+	w1 := httptest.NewRecorder()
+	req1 := httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "mail.ru"}`))
+	req1.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w1, req1)
+
+	// редирект - после этого обращение к редису
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest("GET", "/shorten/"+data.ShortCode, nil)
+	req2.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusFound, w2.Code)
+
+	// редирект - обращение к редису
+	w2 = httptest.NewRecorder()
+	req2 = httptest.NewRequest("GET", "/shorten/"+data.ShortCode, nil)
+	req2.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusFound, w2.Code)
+
+	// статистика
+	w3 := httptest.NewRecorder()
+	req3 := httptest.NewRequest("GET", "/shorten/"+data.ShortCode+"/stats", nil)
+	req3.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w3, req3)
+	require.Equal(t, http.StatusOK, w3.Code)
+
+	// проверка изменения задачи
+	w4 := httptest.NewRecorder()
+	req4 := httptest.NewRequest("PUT", "/shorten/"+data.ShortCode, strings.NewReader(`{"url": "go.dev"}`))
+	req4.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w4, req4)
+	require.Equal(t, http.StatusOK, w4.Code)
+
+	// проверка удаления задачи
+	w5 := httptest.NewRecorder()
+	req5 := httptest.NewRequest("DELETE", "/shorten/"+data.ShortCode, nil)
+	req5.Header.Set("Authorization", tokens.AccessToken)
+	app.Router.ServeHTTP(w5, req5)
+	require.Equal(t, http.StatusNoContent, w5.Code)
+
+	
 
 }
+	*/

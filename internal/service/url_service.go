@@ -9,6 +9,7 @@ import (
 
 	"context"
 	"crypto/rand"
+	"errors"
 	"math/big"
 	"strings"
 	"time"
@@ -59,18 +60,18 @@ func GenerateShortCode() (string, error) {
 func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, error) {
 	var newData models.UrlInfo
 	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
-	if err != nil {
+	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+		s.logger.Error("user has no access to this row")
+		return "", errors.New("forbidden: user does not own this resource")
+	} else if err != nil {
 		newData, err = s.repo.RepositoryGet(requestedCode)
-		if err != nil {
+		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+			s.logger.Error("user has no access to this row")
+			return "", errors.New("forbidden: user does not own this resource")
+		} else if err != nil {
 			s.logger.Error("error getting redirect link from db")
 			return "", err
 		}
-		if newData.OwnerID != ownerID {
-			s.logger.Error("user has no access to this row")
-			return "", errors.New("forbidden: user does not own this resource")
-		}
-
-
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
 			s.logger.Error("error saving link to redis")
@@ -88,10 +89,16 @@ func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID in
 	}
 	updatedAt := time.Now()
 	newData, err := s.redisrepo.UpdateUrl(context.Background(), requestedCode, longUrl, updatedAt, ownerID)
-	if err != nil {
+	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+		s.logger.Error("user has no access to this row")
+		return newData, errors.New("forbidden: user does not own this resource")
+	} else if err != nil {
 		s.logger.Info("error updating url in redis", zap.Error(err))
-		newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt, ownerID)
-		if err != nil {
+		newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt)
+		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+			s.logger.Error("user has no access to this row")
+			return newData, errors.New("forbidden: user does not own this resource")
+		} else if err != nil {
 			s.logger.Info("error updating url in db", zap.Error(err))
 			return newData, err
 		}
@@ -105,6 +112,7 @@ func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID in
 }
 
 func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
+	// как тут с несовпадением ownerID
 	err := s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
 	if err != nil {
 		if !strings.Contains(err.Error(), "nil") {
@@ -121,10 +129,16 @@ func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
 func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	newData, err := s.redisrepo.GetUrlStats(context.Background(), requestedCode, ownerID)
-	if err != nil {
+	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+		s.logger.Error("user has no access to this row")
+		return newData, errors.New("forbidden: user does not own this resource")
+	} else if err != nil {
 		s.logger.Info("stats not found in redis", zap.Error(err))
-		newData, err := s.repo.RepositoryGetStats(requestedCode, ownerID)
-		if err != nil {
+		newData, err := s.repo.RepositoryGetStats(requestedCode)
+		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
+			s.logger.Error("user has no access to this row")
+			return newData, errors.New("forbidden: user does not own this resource")
+		} else if err != nil {
 			s.logger.Error("error getting stats from db", zap.Error(err))
 			return newData, err
 		}

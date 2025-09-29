@@ -9,6 +9,7 @@ import (
 	"context"
 	"strconv"
 	"time"
+	"errors"
 )
 
 type RedisRepository struct {
@@ -71,10 +72,16 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error) {
 	result, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 	var data models.UrlInfo
-	if err != nil || len(result) == 0 {
-		r.logger.Error("Error getting url stats from redis", zap.Error(err))
+	if err != nil {
+		r.logger.Error("Error getting url stats from redis1", zap.Error(err))
 		return data, err
 	}
+
+	if len(result) == 0 {
+		r.logger.Error("No rows in result set", zap.Error(err))
+		return data, errors.New("No rows in redis")
+	}
+
 
 	data.OwnerID, _ = strconv.Atoi(result["owner_id"])
 	if data.OwnerID != ownerID {

@@ -60,11 +60,12 @@ func (h *UrlHandler) HandlerGet(c *gin.Context) {
 	longUrl, err := h.service.ServiceGet(requestedCode, clientID.(int))
 
 	if err != nil {
-		if strings.Contains("redis", err.Error()) {
+		if strings.Contains(err.Error(), "redis") {
 			h.logger.Warn("Error saving url in redis")
-		} else if strings.Contains("own this resource") {
+		} else if strings.Contains(err.Error(), "own this resource") {
 			h.logger.Error("user has no access to resource")
 			c.String(http.StatusForbidden, "user has no access to this resource")
+			return
 		} else { 
 			h.logger.Error("database retrieval error", zap.Error(err))
 			c.String(http.StatusNotFound, "not found")
@@ -95,6 +96,9 @@ func (h *UrlHandler) HandlerPut(c *gin.Context) {
 		if strings.Contains(err.Error(), "no rows")  {
 			h.logger.Error("short url not found", zap.Error(err))
 			c.String(http.StatusNotFound, "short url not found")
+		} else if strings.Contains(err.Error(), "forbidden") {
+			h.logger.Error("user has no access to this resource", zap.Error(err))
+			c.String(http.StatusForbidden, "user has no access to this resource")
 		} else {
 			h.logger.Error("url updating error", zap.Error(err))
 			c.String(http.StatusInternalServerError, "url updating error")
@@ -116,6 +120,9 @@ func (h *UrlHandler) HandlerDelete(c *gin.Context) {
 		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
 			c.String(http.StatusNotFound, "short url not found")
+		} else if strings.Contains(err.Error(), "forbidden") {
+			h.logger.Error("user has no access to this resource", zap.Error(err))
+			c.String(http.StatusForbidden, "user has no access to this resource")
 		} else {
 			h.logger.Error("database delete error", zap.Error(err))
 			c.String(http.StatusInternalServerError, "database delete problem")
@@ -130,12 +137,17 @@ func (h *UrlHandler) HandlerGetStats(c *gin.Context) {
 	if exists != true {
 		h.logger.Fatal("error retrieving clientID")
 	}
+	h.logger.Info("", zap.Int("client id here: ", clientID.(int)))
 	requestedCode := c.Param("shortcode")
 	statData, err := h.service.ServiceGetStats(requestedCode, clientID.(int))
+
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
 			c.String(http.StatusNotFound, "short url not found")
+		} else if strings.Contains(err.Error(), "forbidden") {
+			h.logger.Error("user has no access to this resource", zap.Error(err))
+			c.String(http.StatusForbidden, "user has no access to this resource")
 		} else {
 			h.logger.Error("error getting stats", zap.Error(err))
 			c.String(http.StatusInternalServerError, "error getting statistics")
