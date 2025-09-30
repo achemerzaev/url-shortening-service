@@ -93,8 +93,14 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 
 	tokens, err := h.service.ServiceRefresh(userID, refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
-		h.logger.Error("error refreshing token", zap.Error(err))
-		c.String(http.StatusInternalServerError, "error refreshing token")
+		if strings.Contains(err.Error(), "Refresh token is not valid") {
+			c.String(http.StatusUnauthorized, "Refresh token is not valid")
+		} else if strings.Contains(err.Error(), "No rows") {
+			c.String(http.StatusBadRequest, "User has no valid refresh tokens. Please, log in or register")
+		} else {
+			h.logger.Error("error refreshing token", zap.Error(err))
+			c.String(http.StatusInternalServerError, "error refreshing token")	
+		}
 		return
 	}
 

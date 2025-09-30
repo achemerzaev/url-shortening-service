@@ -38,9 +38,19 @@ func (r *UrlRepository) RepositoryGet(requestedCode string) (models.UrlInfo, err
 	return newData, err
 }
 
-func (r *UrlRepository) RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time) (models.UrlInfo, error) {
+func (r *UrlRepository) RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
+	"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
+	requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+	if err != nil {
+		return newData, err
+	}
+	if newData.OwnerID != ownerID {
+		return newData, errors.New("forbidden: user does not own this resource")
+	}
+
+	err = r.db.QueryRow(context.Background(),
 		"UPDATE urls SET url = $1, updatedAt = $2 WHERE shortcode = $3 RETURNING Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id",
 		longurl, updatedAt, requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
 	return newData, err

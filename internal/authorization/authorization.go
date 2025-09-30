@@ -6,6 +6,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"time"
+	"encoding/hex"
+	"crypto/rand"
 )
 
 // Секретный пароль, использующийся для
@@ -17,9 +19,14 @@ var jwtKey = []byte("bigsecret") // []byte(os.Getenv("JWT_SECRET"))
 // Используется при авторизации после входа в систему. Возвращает токен или ошибку
 
 func GenerateJWT(userId int, ttl time.Duration) (string, error) {
+	jti := make([]byte, 16)
+	if _, err := rand.Read(jti); err != nil {
+		return "", err
+	}
 	claims := jwt.MapClaims{
 		"user_id": userId,
 		"exp":     time.Now().Add(ttl).Unix(),
+		"jti": hex.EncodeToString(jti),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
