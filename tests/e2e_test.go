@@ -118,9 +118,15 @@ func TestTokenFunctionality(t *testing.T) {
 	app.Router.ServeHTTP(w2, req2)
 	require.Equal(t, http.StatusCreated, w2.Code)
 
-	// проверка, что не валидный рефреш токен не работает
+	// проверка, что валидный, но отсуствующий в редисе токен не работает
 	w2 = httptest.NewRecorder()
 	req2 = httptest.NewRequest("POST", "/refresh", strings.NewReader(refreshtokenrequest))
+	app.Router.ServeHTTP(w2, req2)
+	require.Equal(t, http.StatusUnauthorized, w2.Code)
+
+	// проверка, что не валидный рефреш токен не работает
+	w2 = httptest.NewRecorder()
+	req2 = httptest.NewRequest("POST", "/refresh", strings.NewReader(`{"refresh_token": "."}`))
 	app.Router.ServeHTTP(w2, req2)
 	require.Equal(t, http.StatusUnauthorized, w2.Code)
 
@@ -325,9 +331,16 @@ func TestCrudOperations(t *testing.T) {
 func TestNotInDatabase(t *testing.T) {
 	app := setupTestApp(t)
 
-	// создание юзера
+	// попытка логина несуществующего юзера
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/register", strings.NewReader(`{"name":"user3", "email":"user3", "password":"c"}`))
+	req := httptest.NewRequest("POST", "/login", strings.NewReader(`{"email":"user3", "password":"c"}`))
+	req.Header.Set("Content-Type", "application/json")
+	app.Router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusNotFound, w.Code)
+
+	// создание юзера
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/register", strings.NewReader(`{"name":"user3", "email":"user3", "password":"c"}`))
 	req.Header.Set("Content-Type", "application/json")
 	app.Router.ServeHTTP(w, req)
 
@@ -372,6 +385,22 @@ func TestNotInDatabase(t *testing.T) {
 		req5.Header.Set("Authorization", tokens.AccessToken)
 		app.Router.ServeHTTP(w5, req5)
 		require.Equal(t, http.StatusNotFound, w5.Code)
+
+		// изменение удаленной ссылки
+		w5 = httptest.NewRecorder()
+		req5 = httptest.NewRequest("PUT", "/shorten/"+shortCode, strings.NewReader(`{"url": "go.dev"}`))
+		req5.Header.Set("Authorization", tokens.AccessToken)
+		app.Router.ServeHTTP(w5, req5)
+		require.Equal(t, http.StatusNotFound, w5.Code)
+
+		// удаление удаленной ссылки
+		w5 = httptest.NewRecorder()
+		req5 = httptest.NewRequest("DELETE", "/shorten/"+shortCode, nil)
+		req5.Header.Set("Authorization", tokens.AccessToken)
+		app.Router.ServeHTTP(w5, req5)
+		require.Equal(t, http.StatusNotFound, w5.Code)
+
+
 }
 
 func TestInvalidJSON(t *testing.T) {

@@ -62,9 +62,7 @@ func (s *UserService) ServiceRegister(newUser models.PostUserRegistration) (mode
 
 func (s *UserService) ServiceLogin(userinfo models.User) (models.Tokens, error) {
 	var tokens models.Tokens
-	s.logger.Info("Email here: ", zap.String("Email: ", userinfo.Email))
 	storedPassword, err := s.repo.RepoRetrieveUser(userinfo.Email)
-	s.logger.Info("pass here: ", zap.String("pass: ", storedPassword))
 	if err != nil {
 		return tokens, err
 	}

@@ -86,8 +86,8 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 
 	userID, err := authorization.ValidateJWT(refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
-		h.logger.Error("error validating token", zap.Error(err))
-		c.String(http.StatusUnauthorized, "error validating token")
+		h.logger.Error("Refresh token is not valid", zap.Error(err))
+		c.String(http.StatusUnauthorized, "Refresh token is not valid")
 		return
 	}
 
