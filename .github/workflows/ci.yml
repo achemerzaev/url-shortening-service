@@ -52,7 +52,7 @@ jobs:
           sudo mv migrate /usr/local/bin/
       
       - name: Run migrations
-        run: migrate -path ./migrations -database "postgres://postgres:postgres@localhost:5432/app_test?sslmode=disable" up
+        run: migrate -path ./migrations -database "postgres://postgres:password@localhost:5432/app_test?sslmode=disable" up
 
       - name: Install linter
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
