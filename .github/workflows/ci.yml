@@ -46,7 +46,8 @@ jobs:
           go-version: '1.23'
 
       - name: Install golang-migrate
-        run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.16.2/migrate.linux-amd64.tar.gz \
+        run: | 
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.16.2/migrate.linux-amd64.tar.gz \
           | tar xvz
           sudo mv migrate /usr/local/bin/
       
