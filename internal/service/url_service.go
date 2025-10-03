@@ -131,7 +131,7 @@ func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.
 	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
 		return newData, errors.New("forbidden: user does not own this resource")
 	} else if err != nil {
-		s.logger.Info("stats not found in redis", zap.Error(err))
+		s.logger.Info("error getting stats from redis", zap.Error(err))
 		newData, err = s.repo.RepositoryGetStats(requestedCode)
 		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
 			return newData, errors.New("forbidden: user does not own this resource")

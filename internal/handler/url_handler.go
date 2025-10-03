@@ -24,14 +24,14 @@ func (h *UrlHandler) HandlerPost(c *gin.Context) {
 	// database inserting error
 	c.Header("Content-Type", "application/json")
 	clientID, exists := c.Get("clientID")
-	if exists != true {
+	if !exists {
 		h.logger.Info("error retrieving clientID from context")
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
 
 	userUrl, exists := c.Get("jsonBody")
-	if exists != true {
+	if !exists {
 		h.logger.Info("error retrieving jsonBody from context")
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
@@ -52,7 +52,7 @@ func (h *UrlHandler) HandlerPost(c *gin.Context) {
 
 func (h *UrlHandler) HandlerGet(c *gin.Context) {
     clientID, exists := c.Get("clientID")
-	if exists != true {
+	if !exists {
 		h.logger.Fatal("error retrieving clientID")
 	}
 	requestedCode := c.Param("shortcode")
@@ -79,13 +79,13 @@ func (h *UrlHandler) HandlerPut(c *gin.Context) {
 	// needed short url and new long url
 	c.Header("Content-Type", "application/json")
 	clientID, exists := c.Get("clientID")
-	if exists != true {
+	if !exists {
 		h.logger.Fatal("error retrieving clientID")
 	}
 
 	// var newUrl map[string]string
 	newUrl, exists := c.Get("jsonBody")
-	if exists != true {
+	if !exists {
 		h.logger.Fatal("error retrieving jsonBody")
 	}
 
@@ -111,7 +111,7 @@ func (h *UrlHandler) HandlerPut(c *gin.Context) {
 
 func (h *UrlHandler) HandlerDelete(c *gin.Context) {
 	clientID, exists := c.Get("clientID")
-	if exists != true {
+	if !exists {
 		h.logger.Fatal("error retrieving clientID")
 	}
 	requestedCode := c.Param("shortcode")
@@ -134,7 +134,7 @@ func (h *UrlHandler) HandlerDelete(c *gin.Context) {
 
 func (h *UrlHandler) HandlerGetStats(c *gin.Context) {
 	clientID, exists := c.Get("clientID")
-	if exists != true {
+	if !exists {
 		h.logger.Fatal("error retrieving clientID")
 	}
 	h.logger.Info("", zap.Int("client id here: ", clientID.(int)))

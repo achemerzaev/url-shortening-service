@@ -24,7 +24,7 @@ func NewUserHandler(s *service.UserService, logger *zap.Logger) *UserHandler {
 func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	newUser, exists := c.Get("jsonBody")
-	if exists != true {
+	if !exists {
 		h.logger.Info("error retrieving jsonBody from context")
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
@@ -48,7 +48,7 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	loginUser, exists := c.Get("jsonBody")
-	if exists != true {
+	if !exists {
 		h.logger.Info("error retrieving jsonBody from context")
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
@@ -78,7 +78,7 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 
 
 	refreshToken, exists := c.Get("jsonBody")
-	if exists != true {
+	if !exists {
 		h.logger.Info("error retrieving jsonBody from context")
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
@@ -93,7 +93,7 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 
 	tokens, err := h.service.ServiceRefresh(userID, refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
-		if strings.Contains(err.Error(), "Refresh token is not valid") {
+		if strings.Contains(err.Error(), "refresh token is not valid") {
 			c.String(http.StatusUnauthorized, "Refresh token is not valid")
 		} else if strings.Contains(err.Error(), "No rows") {
 			c.String(http.StatusBadRequest, "User has no valid refresh tokens. Please, log in or register")

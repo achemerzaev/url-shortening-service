@@ -101,7 +101,7 @@ func (s *UserService) ServiceRefresh(userID int, refreshtoken string) (models.To
 	s.logger.Info("good so far", zap.String("inserted refresh: ", refreshtoken))
 
 	if oldRefresh != refreshtoken {
-		return tokens, errors.New("Refresh token is not valid")
+		return tokens, errors.New("refresh token is not valid")
 	}
 	s.logger.Info("are equal")
 

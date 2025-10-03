@@ -53,7 +53,7 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", zap.Error(err))
-		return "", errors.New("User doesn't own this resource")
+		return "", errors.New("user doesn't own this resource")
 	}
 	err = r.client.HIncrBy(ctx, "short:"+shortCode, "access_count", 1).Err()
 	if err != nil {
@@ -79,14 +79,14 @@ func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, own
 
 	if len(result) == 0 {
 		r.logger.Error("No rows in result set", zap.Error(err))
-		return data, errors.New("No rows in redis")
+		return data, errors.New("no rows in redis")
 	}
 
 
 	data.OwnerID, _ = strconv.Atoi(result["owner_id"])
 	if data.OwnerID != ownerID {
 		r.logger.Error("User doesn't own this resource", zap.Error(err))
-		return data, errors.New("User doesn't own this resource")
+		return data, errors.New("user doesn't own this resource")
 	}
 	data.Id, _ = strconv.Atoi(result["id"])
 	data.Url = result["url"]
@@ -113,7 +113,7 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", zap.Error(err))
-		return data, errors.New("User doesn't own this resource")
+		return data, errors.New("user doesn't own this resource")
 	}
 	err = r.client.HSet(ctx, "short:"+requestedCode, "url", newLongUrl).Err()
 	if err != nil {
@@ -142,7 +142,7 @@ func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, owner
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", zap.Error(err))
-		return errors.New("User doesn't own this resource")
+		return errors.New("user doesn't own this resource")
 	}
 	err = r.client.Del(ctx, "short:"+shortCode).Err()
 	return err
