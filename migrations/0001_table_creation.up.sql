@@ -1,0 +1,1 @@
+CREATE TABLE urls (Url TEXT NOT NULL);
