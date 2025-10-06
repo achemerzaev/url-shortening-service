@@ -13,13 +13,16 @@ import (
 
 	"context"
 	"log"
+	"os"
 )
 
-// валидация json - запрет лишних полей
 // докеры
 // ci/cd
 // деплой
 // прометеус и графана мб
+
+// проверка ошибки синтакса на синке
+// проверка инкремента аксесс каунта
 
 func main() {
 	logger, err := zap.NewDevelopment()
@@ -36,15 +39,13 @@ func main() {
 	logger.Info("app started", zap.String("env", "dev"))
 
 	ctx := context.Background()
-	dsn := "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
-	// localhost to be changed to contanier name
-	pool, err := database.InitDb(ctx, dsn)
+	pool, err := database.InitDb(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		logger.Fatal("Postgres connection error: ", zap.Error(err))
 	}
 	defer pool.Close()
 
-	redisClient, err := database.InitRedis("localhost:6379", "", 0)
+	redisClient, err := database.InitRedis(os.Getenv("REDIS_ADDR"), "", 0)
 	if err != nil {
 		logger.Fatal("Redis connection error: ", zap.Error(err))
 	}
@@ -62,21 +63,24 @@ func main() {
 	router := gin.New()
 	router.Use(middleware.RequestIdMiddleware())
 	router.Use(middleware.LoggerMiddleware(logger))
-	router.Use(middleware.AuthorizationMiddleware(logger))
 	router.Use(middleware.JSONValidationMiddleware())
-	// router use other Middleware
-
-	router.POST("/shorten", urlHandler.HandlerPost)
-	router.GET("/shorten/:shortcode", urlHandler.HandlerGet)
-	router.PUT("/shorten/:shortcode", urlHandler.HandlerPut)
-	router.DELETE("/shorten/:shortcode", urlHandler.HandlerDelete)
-	router.GET("/shorten/:shortcode/stats", urlHandler.HandlerGetStats)
 
 	router.POST("/register", userHandler.HandlerRegister)
 	router.POST("/login", userHandler.HandlerLogin)
 	router.POST("/refresh", userHandler.HandlerRefresh)
 
-	err = router.Run("localhost:8080")
+
+	private := router.Group("/")
+	private.Use(middleware.AuthorizationMiddleware(logger))
+	{
+		private.POST("/shorten", urlHandler.HandlerPost)
+		private.GET("/shorten/:shortcode", urlHandler.HandlerGet)
+		private.PUT("/shorten/:shortcode", urlHandler.HandlerPut)
+		private.DELETE("/shorten/:shortcode", urlHandler.HandlerDelete)
+		private.GET("/shorten/:shortcode/stats", urlHandler.HandlerGetStats)
+	}
+
+	err = router.Run(":8080")
 	if err != nil {
 		logger.Fatal("Router starting error: ", zap.Error(err))
 	}

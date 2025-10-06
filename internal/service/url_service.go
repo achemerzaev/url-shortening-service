@@ -59,6 +59,7 @@ func GenerateShortCode() (string, error) {
 
 func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, error) {
 	var newData models.UrlInfo
+	s.logger.Info("service get: ", zap.String("code: ", requestedCode))
 	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
 	s.logger.Info("service get redis, error here: ", zap.Error(err))
 	if err != nil && strings.Contains(err.Error(), "does't own") {
@@ -70,6 +71,7 @@ func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, erro
 		} else if err != nil {
 			return "", err
 		}
+		s.logger.Info("service get save url: ", zap.String("code: ", newData.ShortCode))
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
 			s.logger.Error("error saving link to redis")

@@ -30,6 +30,7 @@ func (r *RedisRepository) GetRefreshToken(ctx context.Context, userID string) (s
 }
 
 func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) error {
+	r.logger.Info("###########", zap.String("code: ", data.ShortCode))
 	err := r.client.HSet(ctx, "short:"+data.ShortCode, map[string]interface{}{
 		"id":           data.Id,
 		"url":          data.Url,
@@ -43,6 +44,7 @@ func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) erro
 
 func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error) {
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
+
 	if err == redis.Nil {
 		return "", err
 	}
@@ -60,7 +62,7 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 		r.logger.Error("Error incrimenting access_count in redis", zap.Error(err))
 		return "", err
 	}
-	res, err = r.client.HGet(ctx, "short:"+shortCode, "long_url").Result()
+	res, err = r.client.HGet(ctx, "short:"+shortCode, "url").Result()
 	if err != nil || len(res) == 0 {
 		r.logger.Error("Error getting long_url from redis", zap.Error(err))
 		return "", err
