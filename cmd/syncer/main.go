@@ -27,13 +27,10 @@ func main() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
+	for range ticker.C {
 			if err := syncer.SyncRedisToPostgres(ctx, rdb, pool); err != nil {
 				fmt.Println("sync error:", err)
 			}
 		}
-	}
 
 }
