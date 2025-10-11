@@ -30,7 +30,6 @@ func (r *RedisRepository) GetRefreshToken(ctx context.Context, userID string) (s
 }
 
 func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) error {
-	r.logger.Info("###########", zap.String("code: ", data.ShortCode))
 	err := r.client.HSet(ctx, "short:"+data.ShortCode, map[string]interface{}{
 		"id":           data.Id,
 		"url":          data.Url,

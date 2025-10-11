@@ -3,12 +3,16 @@ services:
   db:
     image: postgres:15-alpine
     restart: always
+    secrets:
+      - db_user
+      - db_password
+      - db_name
     environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB_FILE=/run/secrets/db_name
+      - POSTGRES_USER_FILE=/run/secrets/db_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    networks:
+      - backend
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -31,13 +35,20 @@ services:
       db:
         condition: service_healthy
     restart: on-failure
+    networks:
+      - backend
   
   # --- кеш ---
   cache:
     image: redis:7-alpine
+    command: ["/bin/sh", "-c", "redis-server --requirepass $(cat /run/secrets/redis_password)"]
+    secrets:
+      - redis_password
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
     restart: always
-    ports:
-      - "6379:6379"
+    networks:
+      - backend
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -55,9 +66,14 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
-    environment:
-      - DATABASE_URL=postgres://postgres:password@db:5432/postgres?sslmode=disable
-      - REDIS_ADDR=cache:6379
+    env_file: .env
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+      - redis_password
+    networks:
+      - backend
 
   # --- основное приложение ---
   app:
@@ -65,16 +81,68 @@ services:
       context: .
       dockerfile: ./cmd/app/Dockerfile
     restart: unless-stopped
+    env_file: .env
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+      - redis_password
     depends_on:
       db:
         condition: service_healthy
       cache:
         condition: service_healthy
+    networks:
+      - backend
     ports:
       - "8080:8080"
+  
+  # --------- прометеус ---------
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  
+  # -------- grafana --------
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    networks:
+      - backend
+    ports:
+      - "3000:3000"
+    secrets:
+      - grafana_admin_user
+      - grafana_admin_password
     environment:
-      - DATABASE_URL=postgres://postgres:password@db:5432/postgres?sslmode=disable
-      - REDIS_ADDR=cache:6379
+      - GF_SECURITY_ADMIN_USER__FILE=/run/secrets/grafana_admin_user
+      - GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/grafana_admin_password
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-storage:/var/lib/grafana
 volumes:
   pgdata:
+  grafana-storage:
   
+secrets:
+  db_user:
+    file: ./secrets/db_user.txt
+  db_password:
+    file: ./secrets/db_password.txt
+  db_name:
+    file: ./secrets/db_name.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  grafana_admin_user:
+    file: ./secrets/grafana_admin_user.txt
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt
+
+networks:
+  backend:
+    driver: bridge

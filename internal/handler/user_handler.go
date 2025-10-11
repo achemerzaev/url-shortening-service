@@ -74,8 +74,6 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 
 func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	h.logger.Info(">>> i enter this function")
-
 
 	refreshToken, exists := c.Get("jsonBody")
 	if !exists {

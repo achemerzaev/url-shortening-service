@@ -6,7 +6,6 @@ import (
 
 	"context"
 	"strings"
-	"fmt"
 )
 
 func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Pool) error {
@@ -43,10 +42,8 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 	}
 
 	if len(updates) == 0 {
-		fmt.Printf("nil for now")
 		return nil
 	}
-	fmt.Printf("not nil for now")
 
 	// build query string
 	var sb strings.Builder

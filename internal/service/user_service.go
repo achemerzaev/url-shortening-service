@@ -97,29 +97,23 @@ func (s *UserService) ServiceRefresh(userID int, refreshtoken string) (models.To
 	if err != nil {
 		return tokens, err
 	}
-	s.logger.Info("good so far", zap.String("old refresh: ", oldRefresh))
-	s.logger.Info("good so far", zap.String("inserted refresh: ", refreshtoken))
 
 	if oldRefresh != refreshtoken {
 		return tokens, errors.New("refresh token is not valid")
 	}
-	s.logger.Info("are equal")
 
 	tokens.AccessToken, err = authorization.GenerateJWT(userID, 1*time.Hour)
 	if err != nil {
-		s.logger.Info("error generating access token")
 		return tokens, err
 	}
 	tokens.RefreshToken, err = authorization.GenerateJWT(userID, 7*24*time.Hour)
 	if err != nil {
-		s.logger.Info("error generating refresh token")
 		return tokens, err
 	}
 
 	err = s.redisrepo.SaveRefreshToken(context.Background(),
 		strconv.Itoa(userID), tokens.RefreshToken, 7*24*time.Hour)
 	if err != nil {
-		s.logger.Info("error in saving")
 		return tokens, err
 	}
 	return tokens, err
