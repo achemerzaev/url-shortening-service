@@ -2,22 +2,22 @@ package redisrepo
 
 import (
 	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/boretsotets/url-shortening-service/pkg/logger"
 
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 
 	"context"
+	"errors"
 	"strconv"
 	"time"
-	"errors"
 )
 
 type RedisRepository struct {
 	client *redis.Client
-	logger *zap.Logger
+	logger logger.Logger
 }
 
-func NewRedisRepository(client *redis.Client, logger *zap.Logger) *RedisRepository {
+func NewRedisRepository(client *redis.Client, logger logger.Logger) *RedisRepository {
 	return &RedisRepository{client: client, logger: logger}
 }
 
@@ -48,22 +48,22 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 		return "", err
 	}
 	if err != nil {
-		r.logger.Error("Error getting owner_id from redis", zap.Error(err))
+		r.logger.Error("Error getting owner_id from redis", err)
 		return "", err
 	}
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
-		r.logger.Error("User doesn't own this resource", zap.Error(err))
+		r.logger.Error("User doesn't own this resource", err)
 		return "", errors.New("user doesn't own this resource")
 	}
 	err = r.client.HIncrBy(ctx, "short:"+shortCode, "access_count", 1).Err()
 	if err != nil {
-		r.logger.Error("Error incrimenting access_count in redis", zap.Error(err))
+		r.logger.Error("Error incrimenting access_count in redis", err)
 		return "", err
 	}
 	res, err = r.client.HGet(ctx, "short:"+shortCode, "url").Result()
 	if err != nil || len(res) == 0 {
-		r.logger.Error("Error getting long_url from redis", zap.Error(err))
+		r.logger.Error("Error getting long_url from redis", err)
 		return "", err
 	}
 
@@ -74,19 +74,18 @@ func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, own
 	result, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 	var data models.UrlInfo
 	if err != nil {
-		r.logger.Error("Error getting url stats from redis", zap.Error(err))
+		r.logger.Error("Error getting url stats from redis", err)
 		return data, err
 	}
 
 	if len(result) == 0 {
-		r.logger.Error("No rows in result set", zap.Error(err))
+		r.logger.Error("No rows in result set", err)
 		return data, errors.New("no rows in redis")
 	}
 
-
 	data.OwnerID, _ = strconv.Atoi(result["owner_id"])
 	if data.OwnerID != ownerID {
-		r.logger.Error("User doesn't own this resource", zap.Error(err))
+		r.logger.Error("User doesn't own this resource", err)
 		return data, errors.New("user doesn't own this resource")
 	}
 	data.Id, _ = strconv.Atoi(result["id"])
@@ -94,11 +93,11 @@ func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, own
 	data.ShortCode = shortCode
 	data.CreatedAt, err = time.Parse(time.RFC3339Nano, result["created_at"])
 	if err != nil {
-		r.logger.Error("error parsing time", zap.Error(err))
+		r.logger.Error("error parsing time", err)
 	}
 	data.UpdatedAt, err = time.Parse(time.RFC3339Nano, result["updated_at"])
 	if err != nil {
-		r.logger.Error("error parsing time", zap.Error(err))
+		r.logger.Error("error parsing time", err)
 	}
 	data.AccessCount, _ = strconv.Atoi(result["access_count"])
 	return data, nil
@@ -108,27 +107,27 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 	var data models.UrlInfo
 	res, err := r.client.HGet(ctx, "short:"+requestedCode, "owner_id").Result()
 	if err != nil {
-		r.logger.Error("Error getting owner_id from redis", zap.Error(err))
+		r.logger.Error("Error getting owner_id from redis", err)
 		return data, err
 	}
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
-		r.logger.Error("User doesn't own this resource", zap.Error(err))
+		r.logger.Error("User doesn't own this resource", err)
 		return data, errors.New("user doesn't own this resource")
 	}
 	err = r.client.HSet(ctx, "short:"+requestedCode, "url", newLongUrl).Err()
 	if err != nil {
-		r.logger.Error("Error getting url from redis", zap.Error(err))
+		r.logger.Error("Error getting url from redis", err)
 		return data, err
 	}
 	err = r.client.HSet(ctx, "short:"+requestedCode, "updated_at", updatedAt).Err()
 	if err != nil {
-		r.logger.Error("Error changing update time in redis", zap.Error(err))
+		r.logger.Error("Error changing update time in redis", err)
 		return data, err
 	}
 	data, err = r.GetUrlStats(ctx, requestedCode, ownerID)
 	if err != nil {
-		r.logger.Error("Error getting stats from redis", zap.Error(err))
+		r.logger.Error("Error getting stats from redis", err)
 		return data, err
 	}
 	return data, nil
@@ -137,12 +136,12 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, ownerID int) error {
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
 	if err != nil {
-		r.logger.Error("Error getting owner_id from redis in delete", zap.Error(err))
+		r.logger.Error("Error getting owner_id from redis in delete", err)
 		return err
 	}
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
-		r.logger.Error("User doesn't own this resource", zap.Error(err))
+		r.logger.Error("User doesn't own this resource", err)
 		return errors.New("user doesn't own this resource")
 	}
 	err = r.client.Del(ctx, "short:"+shortCode).Err()

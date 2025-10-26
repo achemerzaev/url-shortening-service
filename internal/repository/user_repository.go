@@ -2,19 +2,19 @@ package repository
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
 
 	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/boretsotets/url-shortening-service/pkg/logger"
 
 	"context"
 )
 
 type UserRepository struct {
 	db     *pgxpool.Pool
-	logger *zap.Logger
+	logger logger.Logger
 }
 
-func NewUserRepository(db *pgxpool.Pool, logger *zap.Logger) *UserRepository {
+func NewUserRepository(db *pgxpool.Pool, logger logger.Logger) *UserRepository {
 	return &UserRepository{db: db, logger: logger}
 }
 

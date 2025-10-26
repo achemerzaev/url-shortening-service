@@ -2,43 +2,31 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
 	"github.com/boretsotets/url-shortening-service/internal/models"
 	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/boretsotets/url-shortening-service/pkg/errors"
+	"github.com/boretsotets/url-shortening-service/pkg/logger"
 
 	"net/http"
-	"strings"
 )
 
 type UserHandler struct {
 	service *service.UserService
-	logger  *zap.Logger
+	logger  logger.Logger
 }
 
-func NewUserHandler(s *service.UserService, logger *zap.Logger) *UserHandler {
+func NewUserHandler(s *service.UserService, logger logger.Logger) *UserHandler {
 	return &UserHandler{service: s, logger: logger}
 }
 
 func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	newUser, exists := c.Get("jsonBody")
-	if !exists {
-		h.logger.Info("error retrieving jsonBody from context")
-		c.String(http.StatusInternalServerError, "internal server error")
-		return
-	}
+	newUser, _ := c.Get("jsonBody")
 
 	_, tokens, err := h.service.ServiceRegister(*newUser.(*models.PostUserRegistration))
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate") {
-			h.logger.Error("key duplicate error", zap.Error(err))
-			c.String(http.StatusConflict, "user with this email already exists")	
-		} else {
-			h.logger.Error("error inserting user", zap.Error(err))
-			c.String(http.StatusInternalServerError, "error inserting user")
-		}
+		ErrorHandler(c, err, h.logger)
 		return
 	}
 	c.IndentedJSON(http.StatusCreated, tokens)
@@ -47,60 +35,48 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 
 func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
-	loginUser, exists := c.Get("jsonBody")
-	if !exists {
-		h.logger.Info("error retrieving jsonBody from context")
-		c.String(http.StatusInternalServerError, "internal server error")
-		return
-	}
+	loginUser, _ := c.Get("jsonBody")
+
 	var userInfo models.User
-	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email, 
-	loginUser.(*models.PostUserLogin).Password
+	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email,
+		loginUser.(*models.PostUserLogin).Password
 
 	tokens, err := h.service.ServiceLogin(userInfo)
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
-			h.logger.Error("user does not exist", zap.Error(err))
-			c.String(http.StatusNotFound, "username or password are not correct")
-		} else {
-			h.logger.Error("error logging in", zap.Error(err))
-			c.String(http.StatusInternalServerError, "login error")	
-		}
+		ErrorHandler(c, err, h.logger)
 		return
 	}
-
 	c.IndentedJSON(http.StatusOK, tokens)
 }
 
 func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
+	refreshToken, _ := c.Get("jsonBody")
 
-	refreshToken, exists := c.Get("jsonBody")
-	if !exists {
-		h.logger.Info("error retrieving jsonBody from context")
-		c.String(http.StatusInternalServerError, "internal server error")
-		return
-	}
+	tokens, err := h.service.ServiceRefresh(refreshToken.(*models.PostRefreshToken).RefreshToken)
 
-	userID, err := authorization.ValidateJWT(refreshToken.(*models.PostRefreshToken).RefreshToken)
 	if err != nil {
-		h.logger.Error("Refresh token is not valid", zap.Error(err))
-		c.String(http.StatusUnauthorized, "Refresh token is not valid")
+		ErrorHandler(c, err, h.logger)
 		return
 	}
-
-	tokens, err := h.service.ServiceRefresh(userID, refreshToken.(*models.PostRefreshToken).RefreshToken)
-	if err != nil {
-		if strings.Contains(err.Error(), "refresh token is not valid") {
-			c.String(http.StatusUnauthorized, "Refresh token is not valid")
-		} else if strings.Contains(err.Error(), "No rows") {
-			c.String(http.StatusBadRequest, "User has no valid refresh tokens. Please, log in or register")
-		} else {
-			h.logger.Error("error refreshing token", zap.Error(err))
-			c.String(http.StatusInternalServerError, "error refreshing token")	
-		}
-		return
-	}
-
 	c.IndentedJSON(http.StatusCreated, tokens)
+}
+
+func ErrorHandler(c *gin.Context, err *errors.AppError, logger logger.Logger) {
+
+	status := map[string]int{
+		"EMAIL_EXISTS":        http.StatusConflict,
+		"INVALID_CREDENTIALS": http.StatusUnauthorized,
+		"INVALID_TOKEN":       http.StatusUnauthorized,
+		"FORBIDDEN":           http.StatusForbidden,
+		"NOT_FOUND":           http.StatusNotFound,
+		"JWT_ERROR":           http.StatusInternalServerError,
+	}[err.Code]
+
+	if status == 0 {
+		status = http.StatusInternalServerError
+	}
+
+	c.IndentedJSON(status, gin.H{"error": err.Message})
+	logger.Error("Error code: ", err.Code, " error: ", err.Err)
 }

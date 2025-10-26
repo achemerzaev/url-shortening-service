@@ -2,9 +2,9 @@ package repository
 
 import (
 	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/boretsotets/url-shortening-service/pkg/logger"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
 
 	"context"
 	"errors"
@@ -13,10 +13,10 @@ import (
 
 type UrlRepository struct {
 	db     *pgxpool.Pool
-	logger *zap.Logger
+	logger logger.Logger
 }
 
-func NewUrlRepository(db *pgxpool.Pool, logger *zap.Logger) *UrlRepository {
+func NewUrlRepository(db *pgxpool.Pool, logger logger.Logger) *UrlRepository {
 	return &UrlRepository{db: db, logger: logger}
 }
 
@@ -34,20 +34,19 @@ func (r *UrlRepository) RepositoryGet(requestedCode string) (models.UrlInfo, err
 	err := r.db.QueryRow(context.Background(),
 		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
 		requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
-	r.logger.Info("checking struct", zap.Int("id here ", newData.Id), zap.String("url here", newData.Url), zap.String("short code here", newData.ShortCode))
 	return newData, err
 }
 
 func (r *UrlRepository) RepositoryUpdate(requestedCode string, longurl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	err := r.db.QueryRow(context.Background(),
-	"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
-	requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
+		"SELECT Id, Url, ShortCode, CreatedAt, UpdatedAt, AccessCount, owner_id FROM urls WHERE shortcode = $1",
+		requestedCode).Scan(&newData.Id, &newData.Url, &newData.ShortCode, &newData.CreatedAt, &newData.UpdatedAt, &newData.AccessCount, &newData.OwnerID)
 	if err != nil {
 		return newData, err
 	}
 	if newData.OwnerID != ownerID {
-		return newData, errors.New("forbidden: user does not own this resource")
+		return newData, errors.New("forbidden: user doesn't own this resource")
 	}
 
 	err = r.db.QueryRow(context.Background(),
@@ -65,7 +64,7 @@ func (r *UrlRepository) RepositoryDelete(requestedCode string, ownerID int) erro
 		return err
 	}
 	if newData.OwnerID != ownerID {
-		return errors.New("forbidden: user does not own this resource")
+		return errors.New("forbidden: user doesn't own this resource")
 	}
 
 	var deletedUrl string

@@ -4,12 +4,11 @@ import (
 	"github.com/boretsotets/url-shortening-service/internal/models"
 	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
 	"github.com/boretsotets/url-shortening-service/internal/repository"
-
-	"go.uber.org/zap"
+	"github.com/boretsotets/url-shortening-service/pkg/errors"
+	"github.com/boretsotets/url-shortening-service/pkg/logger"
 
 	"context"
 	"crypto/rand"
-	"errors"
 	"math/big"
 	"strings"
 	"time"
@@ -18,26 +17,29 @@ import (
 type UrlService struct {
 	repo      *repository.UrlRepository
 	redisrepo *redisrepo.RedisRepository
-	logger    *zap.Logger
+	logger    logger.Logger
 }
 
-func NewUrlService(r *repository.UrlRepository, redisr *redisrepo.RedisRepository, logger *zap.Logger) *UrlService {
+func NewUrlService(r *repository.UrlRepository, redisr *redisrepo.RedisRepository, logger logger.Logger) *UrlService {
 	return &UrlService{repo: r, redisrepo: redisr, logger: logger}
 }
 
-func (s *UrlService) ServicePost(data models.UrlInfo) (models.UrlInfo, error) {
+func (s *UrlService) ServicePost(data models.UrlInfo) (models.UrlInfo, *errors.AppError) {
 	data.CreatedAt = time.Now()
 	data.UpdatedAt = data.CreatedAt
 	code, err := GenerateShortCode()
 	data.ShortCode = code
 	if err != nil {
-		return data, err
+		return data, errors.Wrap("INTERNAL_ERROR", "error posting URL", err)
 	}
 	if !strings.HasPrefix(data.Url, "http://") && !strings.HasPrefix(data.Url, "https://") {
 		data.Url = "https://" + data.Url
 	}
 	newInsertion, err := s.repo.RepositoryPost(data)
-	return newInsertion, err
+	if err != nil {
+		return newInsertion, errors.Wrap("INTERNAL_ERROR", "error posting URL", err)
+	}
+	return newInsertion, nil
 }
 
 const chars = "1234567890abcdefghijklmnopqrstuvwxyz"
@@ -57,85 +59,101 @@ func GenerateShortCode() (string, error) {
 	return string(ran_str), nil
 }
 
-func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, error) {
+func (s *UrlService) ServiceGet(requestedCode string, ownerID int) (string, *errors.AppError) {
 	var newData models.UrlInfo
 	longUrl, err := s.redisrepo.GetUrl(context.Background(), requestedCode, ownerID)
 	if err != nil && strings.Contains(err.Error(), "does't own") {
-		return "", errors.New("forbidden: user does not own this resource")
+		return "", errors.ErrForbidden
 	} else if err != nil {
 		newData, err = s.repo.RepositoryGet(requestedCode)
 		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return "", errors.New("forbidden: user does not own this resource")
+			return "", errors.ErrForbidden
 		} else if err != nil {
-			return "", err
+			if strings.Contains(err.Error(), "no rows") {
+				return "", errors.ErrNotFound
+			} else {
+				return "", errors.Wrap("INTERNAL_ERROR", "error getting URL", err)
+			}
 		}
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
-			return "", err
+			return "", errors.Wrap("INTERNAL_ERROR", "error getting URL", err)
 		}
 		longUrl = newData.Url
 	}
 
-	return longUrl, err
+	return longUrl, nil
 }
 
-func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
+func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID int) (models.UrlInfo, *errors.AppError) {
 	if !strings.HasPrefix(longUrl, "http://") && !strings.HasPrefix(longUrl, "https://") {
 		longUrl = "https://" + longUrl
 	}
 	updatedAt := time.Now()
 	newData, err := s.redisrepo.UpdateUrl(context.Background(), requestedCode, longUrl, updatedAt, ownerID)
 	if err != nil && strings.Contains(err.Error(), "doesn't own") {
-		return newData, errors.New("forbidden: user does not own this resource")
+		return newData, errors.ErrForbidden
 	} else if err != nil {
-		s.logger.Info("error updating url in redis", zap.Error(err))
 		newData, err := s.repo.RepositoryUpdate(requestedCode, longUrl, updatedAt, ownerID)
 		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return newData, errors.New("forbidden: user does not own this resource")
+			return newData, errors.ErrForbidden
 		} else if err != nil {
-			return newData, err
+			if strings.Contains(err.Error(), "no rows") {
+				return newData, errors.ErrNotFound
+			} else {
+				return newData, errors.Wrap("INTERNAL_ERROR", "error changing URL", err)
+			}
 		}
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
-			return newData, err
+			return newData, errors.Wrap("INTERNAL_ERROR", "error changing URL", err)
 		}
 	}
 	return newData, nil
 }
 
-func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
+func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) *errors.AppError {
 	err := s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
-	if err != nil  && !strings.Contains(err.Error(), "nil")  {
+	if err != nil && !strings.Contains(err.Error(), "nil") {
 		if strings.Contains(err.Error(), "doesn't own") {
-			return errors.New("forbidden: user does not own this resource")
+			return errors.ErrForbidden
 		}
-		return err
+		return errors.Wrap("INTERNAL_ERROR", "error deleting url", err)
 	}
 	err = s.repo.RepositoryDelete(requestedCode, ownerID)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "doesn't own") {
+			return errors.ErrForbidden
+		} else if strings.Contains(err.Error(), "no rows") {
+			return errors.ErrNotFound
+		} else {
+			return errors.Wrap("INTERNAL_ERROR", "error deleting url", err)
+		}
 	}
 	return nil
 }
 
-func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, error) {
+func (s *UrlService) ServiceGetStats(requestedCode string, ownerID int) (models.UrlInfo, *errors.AppError) {
 	var newData models.UrlInfo
 	newData, err := s.redisrepo.GetUrlStats(context.Background(), requestedCode, ownerID)
 	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-		return newData, errors.New("forbidden: user does not own this resource")
+		return newData, errors.ErrForbidden
 	} else if err != nil {
-		s.logger.Info("error getting stats from redis", zap.Error(err))
 		newData, err = s.repo.RepositoryGetStats(requestedCode)
 		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return newData, errors.New("forbidden: user does not own this resource")
+			return newData, errors.ErrForbidden
 		} else if err != nil {
-			return newData, err
+			if strings.Contains(err.Error(), "no rows") {
+				return newData, errors.ErrNotFound
+			} else {
+				return newData, errors.Wrap("INTERNAL_ERROR", "error getting stats", err)
+			}
 		}
 		err = s.redisrepo.SaveUrl(context.Background(), newData)
 		if err != nil {
-			return newData, err
+			return newData, errors.Wrap("INTERNAL_ERROR", "error getting stats", err)
 		}
 	}
 
-	return newData, err
+	return newData, nil
 }
