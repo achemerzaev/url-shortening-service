@@ -61,4 +61,4 @@ jobs:
         run: golangci-lint run ./...
 
       - name: Run tests
-        run: go test ./... -coverpkg=./... -coverprofile=coverage.out
+        run: go test ./tests -coverpkg=./... -coverprofile=coverage.out
