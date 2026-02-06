@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/middleware"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/internal/middleware"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gin-gonic/gin"

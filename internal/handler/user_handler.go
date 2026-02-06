@@ -3,10 +3,10 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/service"
-	"github.com/boretsotets/url-shortening-service/pkg/errors"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/pkg/errors"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"net/http"
 )

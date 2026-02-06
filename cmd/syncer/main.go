@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/syncer"
+	"github.com/achemerzaev/url-shortening-service/internal/syncer"
 )
 
 func main() {

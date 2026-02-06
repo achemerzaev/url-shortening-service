@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/config"
+	"github.com/achemerzaev/url-shortening-service/internal/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

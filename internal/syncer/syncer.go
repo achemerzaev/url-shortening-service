@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/boretsotets/url-shortening-service/database"
-	"github.com/boretsotets/url-shortening-service/internal/config"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/database"
+	"github.com/achemerzaev/url-shortening-service/internal/config"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 )
 
 func Run() {

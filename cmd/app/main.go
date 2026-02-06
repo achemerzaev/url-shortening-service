@@ -1,6 +1,6 @@
 package main
 
-import "github.com/boretsotets/url-shortening-service/internal/app"
+import "github.com/achemerzaev/url-shortening-service/internal/app"
 
 // проверка билда с секретами и внутренней сетю, разделение конфигов и докер компоуза на девелопмент и релиз
 // сделат мейн и хендлеры тонкими

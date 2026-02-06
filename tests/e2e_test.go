@@ -1,16 +1,16 @@
 package e2e
 
 import (
-	"github.com/boretsotets/url-shortening-service/database"
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-	"github.com/boretsotets/url-shortening-service/internal/config"
-	"github.com/boretsotets/url-shortening-service/internal/handler"
-	"github.com/boretsotets/url-shortening-service/internal/middleware"
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/service"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/database"
+	"github.com/achemerzaev/url-shortening-service/internal/authorization"
+	"github.com/achemerzaev/url-shortening-service/internal/config"
+	"github.com/achemerzaev/url-shortening-service/internal/handler"
+	"github.com/achemerzaev/url-shortening-service/internal/middleware"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"

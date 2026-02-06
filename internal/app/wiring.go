@@ -4,11 +4,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/boretsotets/url-shortening-service/internal/handler"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/service"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/internal/handler"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 )
 
 type Handlers struct {

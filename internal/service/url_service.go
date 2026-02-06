@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/pkg/errors"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/pkg/errors"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"context"
 	"crypto/rand"

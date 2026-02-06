@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/pkg/logger"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
