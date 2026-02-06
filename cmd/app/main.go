@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/boretsotets/url-shortening-service/database"
-	"github.com/boretsotets/url-shortening-service/internal/handler"
-	"github.com/boretsotets/url-shortening-service/internal/middleware"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
-	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/database"
+	"github.com/achemerzaev/url-shortening-service/internal/handler"
+	"github.com/achemerzaev/url-shortening-service/internal/middleware"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -68,7 +68,6 @@ func main() {
 	router.POST("/register", userHandler.HandlerRegister)
 	router.POST("/login", userHandler.HandlerLogin)
 	router.POST("/refresh", userHandler.HandlerRefresh)
-
 
 	private := router.Group("/")
 	private.Use(middleware.AuthorizationMiddleware(logger))

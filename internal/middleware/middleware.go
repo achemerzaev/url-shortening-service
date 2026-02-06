@@ -1,17 +1,17 @@
 package middleware
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/authorization"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"time"
-	"net/http"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 )
 
 func RequestIdMiddleware() gin.HandlerFunc {
@@ -58,8 +58,8 @@ func AuthorizationMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		clientID, err := authorization.ValidateJWT(token)
 		if err != nil {
 			logger.Error("token validation error", zap.Error(err))
-			c.AbortWithStatusJSON(http.StatusUnauthorized, 
-				gin.H{"error":"invalid access token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized,
+				gin.H{"error": "invalid access token"})
 			return
 		}
 		c.Set("clientID", clientID)
@@ -90,22 +90,22 @@ func JSONValidationMiddleware() gin.HandlerFunc {
 
 		/*
 
-		dec := json.NewDecoder(c.Request.Body)
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(v); err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, 
-				gin.H{
-					"error":"json validation error",
-					"message":"invalid input"})
-				return
-		}
-				*/
+			dec := json.NewDecoder(c.Request.Body)
+			dec.DisallowUnknownFields()
+			if err := dec.Decode(v); err != nil {
+				c.AbortWithStatusJSON(http.StatusBadRequest,
+					gin.H{
+						"error":"json validation error",
+						"message":"invalid input"})
+					return
+			}
+		*/
 
 		if err := c.ShouldBindJSON(v); err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, 
-			gin.H{
-				"error":"json validation error",
-				"message":"invalid input"})
+			c.AbortWithStatusJSON(http.StatusBadRequest,
+				gin.H{
+					"error":   "json validation error",
+					"message": "invalid input"})
 			return
 		}
 

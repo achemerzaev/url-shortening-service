@@ -4,10 +4,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/internal/authorization"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
 
 	"context"
 	"errors"

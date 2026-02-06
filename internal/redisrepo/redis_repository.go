@@ -1,15 +1,15 @@
 package redisrepo
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"context"
+	"errors"
 	"strconv"
 	"time"
-	"errors"
 )
 
 type RedisRepository struct {
@@ -83,7 +83,6 @@ func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, own
 		r.logger.Error("No rows in result set", zap.Error(err))
 		return data, errors.New("no rows in redis")
 	}
-
 
 	data.OwnerID, _ = strconv.Atoi(result["owner_id"])
 	if data.OwnerID != ownerID {

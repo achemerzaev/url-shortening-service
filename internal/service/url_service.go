@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/redisrepo"
-	"github.com/boretsotets/url-shortening-service/internal/repository"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
+	"github.com/achemerzaev/url-shortening-service/internal/repository"
 
 	"go.uber.org/zap"
 
@@ -112,7 +112,7 @@ func (s *UrlService) ServicePut(requestedCode string, longUrl string, ownerID in
 func (s *UrlService) ServiceDelete(requestedCode string, ownerID int) error {
 	err := s.redisrepo.DeleteUrl(context.Background(), requestedCode, ownerID)
 	s.logger.Info("Error here:", zap.Error(err))
-	if err != nil  && !strings.Contains(err.Error(), "nil")  {
+	if err != nil && !strings.Contains(err.Error(), "nil") {
 		if strings.Contains(err.Error(), "doesn't own") {
 			return errors.New("forbidden: user does not own this resource")
 		}

@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/boretsotets/url-shortening-service/internal/syncer"
+	"github.com/achemerzaev/url-shortening-service/internal/syncer"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -28,9 +28,9 @@ func main() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-			if err := syncer.SyncRedisToPostgres(ctx, rdb, pool); err != nil {
-				fmt.Println("sync error:", err)
-			}
+		if err := syncer.SyncRedisToPostgres(ctx, rdb, pool); err != nil {
+			fmt.Println("sync error:", err)
 		}
+	}
 
 }

@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/boretsotets/url-shortening-service/internal/authorization"
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/internal/authorization"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
 
 	"net/http"
 	"strings"
@@ -34,7 +34,7 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate") {
 			h.logger.Error("key duplicate error", zap.Error(err))
-			c.String(http.StatusConflict, "user with this email already exists")	
+			c.String(http.StatusConflict, "user with this email already exists")
 		} else {
 			h.logger.Error("error inserting user", zap.Error(err))
 			c.String(http.StatusInternalServerError, "error inserting user")
@@ -54,8 +54,8 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 		return
 	}
 	var userInfo models.User
-	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email, 
-	loginUser.(*models.PostUserLogin).Password
+	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email,
+		loginUser.(*models.PostUserLogin).Password
 
 	tokens, err := h.service.ServiceLogin(userInfo)
 	if err != nil {
@@ -64,7 +64,7 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 			c.String(http.StatusNotFound, "username or password are not correct")
 		} else {
 			h.logger.Error("error logging in", zap.Error(err))
-			c.String(http.StatusInternalServerError, "login error")	
+			c.String(http.StatusInternalServerError, "login error")
 		}
 		return
 	}
@@ -75,7 +75,6 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	h.logger.Info(">>> i enter this function")
-
 
 	refreshToken, exists := c.Get("jsonBody")
 	if !exists {
@@ -99,7 +98,7 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 			c.String(http.StatusBadRequest, "User has no valid refresh tokens. Please, log in or register")
 		} else {
 			h.logger.Error("error refreshing token", zap.Error(err))
-			c.String(http.StatusInternalServerError, "error refreshing token")	
+			c.String(http.StatusInternalServerError, "error refreshing token")
 		}
 		return
 	}

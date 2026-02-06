@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/boretsotets/url-shortening-service/internal/models"
-	"github.com/boretsotets/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -36,7 +36,7 @@ func (h *UrlHandler) HandlerPost(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "internal server error")
 		return
 	}
-	
+
 	var newUrl models.UrlInfo
 	newUrl.Url = userUrl.(*models.PostRequestJSON).Url
 	newUrl.OwnerID = clientID.(int)
@@ -51,7 +51,7 @@ func (h *UrlHandler) HandlerPost(c *gin.Context) {
 }
 
 func (h *UrlHandler) HandlerGet(c *gin.Context) {
-    clientID, exists := c.Get("clientID")
+	clientID, exists := c.Get("clientID")
 	if !exists {
 		h.logger.Fatal("error retrieving clientID")
 	}
@@ -66,7 +66,7 @@ func (h *UrlHandler) HandlerGet(c *gin.Context) {
 			h.logger.Error("user has no access to resource")
 			c.String(http.StatusForbidden, "user has no access to this resource")
 			return
-		} else { 
+		} else {
 			h.logger.Error("database retrieval error", zap.Error(err))
 			c.String(http.StatusNotFound, "not found")
 			return
@@ -93,7 +93,7 @@ func (h *UrlHandler) HandlerPut(c *gin.Context) {
 
 	newData, err := h.service.ServicePut(requestedCode, newUrl.(*models.PutRequestJSON).Url, clientID.(int))
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows")  {
+		if strings.Contains(err.Error(), "no rows") {
 			h.logger.Error("short url not found", zap.Error(err))
 			c.String(http.StatusNotFound, "short url not found")
 		} else if strings.Contains(err.Error(), "forbidden") {
