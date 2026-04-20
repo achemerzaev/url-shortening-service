@@ -2,6 +2,7 @@ package redisrepo
 
 import (
 	"github.com/achemerzaev/url-shortening-service/internal/models"
+	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/redis/go-redis/v9"
@@ -108,12 +109,12 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 	res, err := r.client.HGet(ctx, "short:"+requestedCode, "owner_id").Result()
 	if err != nil {
 		r.logger.Error("Error getting owner_id from redis", err)
-		return data, err
+		return data, appErr.ErrNotFound
 	}
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", err)
-		return data, errors.New("user doesn't own this resource")
+		return data, appErr.ErrForbidden
 	}
 	err = r.client.HSet(ctx, "short:"+requestedCode, "url", newLongUrl).Err()
 	if err != nil {
@@ -137,12 +138,12 @@ func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, owner
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
 	if err != nil {
 		r.logger.Error("Error getting owner_id from redis in delete", err)
-		return err
+		return appErr.ErrNotFound
 	}
 	resint, err := strconv.Atoi(res)
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", err)
-		return errors.New("user doesn't own this resource")
+		return appErr.ErrForbidden
 	}
 	err = r.client.Del(ctx, "short:"+shortCode).Err()
 	return err

@@ -113,7 +113,7 @@ func TestTokenFunctionality(t *testing.T) {
 	require.NotEmpty(t, tokens.RefreshToken)
 
 	// проверка, что юзер был добавлен в бд
-	checkUserCreation, err := app.UserRepo.RepoRetrieveUser("bb")
+	checkUserCreation, err := app.UserRepo.RepoRetrieveUser(req.Context(), "bb")
 	require.NoError(t, err)
 	require.NotEmpty(t, checkUserCreation)
 
@@ -336,7 +336,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w5, req5)
 
 	require.Equal(t, http.StatusNoContent, w5.Code)
-	_, err := app.UrlRepo.RepositoryGet(data.ShortCode)
+	_, err := app.UrlRepo.RepositoryGet(req5.Context(), data.ShortCode)
 	require.Error(t, err)
 }
 

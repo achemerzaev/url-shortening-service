@@ -48,9 +48,9 @@ func Load() (*Config, error) {
 	c.Log.Level = getEnv("LOG_LEVEL", "debug")
 
 	// DB
-	c.DB.Host = getEnv("DB_HOST", "db")
-	c.DB.Port = getEnv("DB_PORT", "5432")
-	c.DB.Name = getEnv("DB_NAME", "postgres")
+	c.DB.Host = getEnv("POSTGRES_HOST", "db")
+	c.DB.Port = getEnv("POSTGRES_PORT", "5432")
+	c.DB.Name = getEnv("POSTGRES_DB", "postgres")
 
 	s, err := readSecretFile("/run/secrets/db_user")
 	if err != nil {
@@ -65,7 +65,7 @@ func Load() (*Config, error) {
 	c.DB.Password = s
 
 	// Redis
-	c.Redis.Addr = getEnv("REDIS_ADDR", "redis:6379")
+	c.Redis.Addr = getEnv("REDIS_ADDR", "cache:6379")
 	c.Redis.DB, _ = strconv.Atoi(getEnv("REDIS_DB", "0"))
 
 	s, err = readSecretFile("/run/secrets/redis_password")

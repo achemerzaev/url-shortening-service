@@ -41,7 +41,7 @@ services:
   # --- кеш ---
   cache:
     image: redis:7-alpine
-    command: ["/bin/sh", "-c", "redis-server --requirepass $(cat /run/secrets/redis_password)"]
+    command: ["/bin/sh", "-c", "redis-server --requirepass $$(cat /run/secrets/redis_password)"]
     secrets:
       - redis_password
     environment:
