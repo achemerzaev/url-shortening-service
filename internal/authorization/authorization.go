@@ -5,9 +5,9 @@ package authorization
 import (
 	"github.com/golang-jwt/jwt/v5"
 
-	"time"
-	"encoding/hex"
 	"crypto/rand"
+	"encoding/hex"
+	"time"
 )
 
 // Секретный пароль, использующийся для
@@ -26,7 +26,7 @@ func GenerateJWT(userId int, ttl time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userId,
 		"exp":     time.Now().Add(ttl).Unix(),
-		"jti": hex.EncodeToString(jti),
+		"jti":     hex.EncodeToString(jti),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

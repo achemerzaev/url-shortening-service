@@ -3,23 +3,26 @@ package e2e
 import (
 	"github.com/achemerzaev/url-shortening-service/database"
 	"github.com/achemerzaev/url-shortening-service/internal/authorization"
+	"github.com/achemerzaev/url-shortening-service/internal/config"
 	"github.com/achemerzaev/url-shortening-service/internal/handler"
 	"github.com/achemerzaev/url-shortening-service/internal/middleware"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
 	"github.com/achemerzaev/url-shortening-service/internal/repository"
 	"github.com/achemerzaev/url-shortening-service/internal/service"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -33,16 +36,27 @@ type TestApp struct {
 func setupTestApp(t *testing.T) *TestApp {
 	t.Helper()
 
-	ctx := context.Background()
+	_ = godotenv.Load("../.env.test")
 
-	dsn := "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
-	pool, err := database.InitDb(ctx, dsn)
+	var DBCfg config.DBConfig
+	DBCfg.User = os.Getenv("POSTGRES_USER")
+	DBCfg.Password = os.Getenv("POSTGRES_PASSWORD")
+	DBCfg.Host = os.Getenv("POSTGRES_HOST")
+	DBCfg.Port = os.Getenv("POSTGRES_PORT")
+	DBCfg.Name = os.Getenv("POSTGRES_DB")
+
+	pool, err := database.NewPostgres(DBCfg)
 	require.NoError(t, err)
 
-	redisClient, err := database.InitRedis("localhost:6379", "", 0)
+	var RedisCfg config.RedisConfig
+	RedisCfg.Addr = os.Getenv("REDIS_ADDR")              // "localhost:6379"
+	RedisCfg.DB, _ = strconv.Atoi(os.Getenv("REDIS_DB")) // 0
+	// RedisCfg.Password = os.Getenv("REDIS_PASSWORD")      // "bigsecret"
+
+	redisClient, err := database.NewRedis(RedisCfg)
 	require.NoError(t, err)
 
-	logger, err := zap.NewDevelopment()
+	logger, err := logger.New("debug")
 	require.NoError(t, err)
 
 	redisRepo := redisrepo.NewRedisRepository(redisClient, logger)
@@ -99,7 +113,7 @@ func TestTokenFunctionality(t *testing.T) {
 	require.NotEmpty(t, tokens.RefreshToken)
 
 	// проверка, что юзер был добавлен в бд
-	checkUserCreation, err := app.UserRepo.RepoRetrieveUser("bb")
+	checkUserCreation, err := app.UserRepo.RepoRetrieveUser(req.Context(), "bb")
 	require.NoError(t, err)
 	require.NotEmpty(t, checkUserCreation)
 
@@ -322,7 +336,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w5, req5)
 
 	require.Equal(t, http.StatusNoContent, w5.Code)
-	_, err := app.UrlRepo.RepositoryGet(data.ShortCode)
+	_, err := app.UrlRepo.RepositoryGet(req5.Context(), data.ShortCode)
 	require.Error(t, err)
 }
 
@@ -334,7 +348,7 @@ func TestNotInDatabase(t *testing.T) {
 	req := httptest.NewRequest("POST", "/login", strings.NewReader(`{"email":"user3", "password":"c"}`))
 	req.Header.Set("Content-Type", "application/json")
 	app.Router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Equal(t, http.StatusUnauthorized, w.Code)
 
 	// создание юзера
 	w = httptest.NewRecorder()

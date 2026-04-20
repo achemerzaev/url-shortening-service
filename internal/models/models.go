@@ -27,7 +27,7 @@ type Tokens struct {
 }
 
 type PostRequestJSON struct {
-	Url string`json:"url" binding:"required"`
+	Url string `json:"url" binding:"required"`
 }
 
 type PutRequestJSON struct {
@@ -39,13 +39,13 @@ type DeleteRequestJSON struct {
 }
 
 type PostUserRegistration struct {
-	Name string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
 type PostUserLogin struct {
-	Email string `json:"email" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 

@@ -3,16 +3,55 @@ package middleware
 import (
 	"github.com/achemerzaev/url-shortening-service/internal/authorization"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
+
+var (
+	httpRequestsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "path", "status"},
+	)
+	httpRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duraion_seconds",
+			Help:    "Histogram of response time for handler in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "path"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(httpRequestsTotal)
+	prometheus.MustRegister(httpRequestDuration)
+}
+
+func PrometheusMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+
+		c.Next()
+
+		duration := time.Since(start).Seconds()
+		path := c.Request.URL.Path
+
+		httpRequestsTotal.WithLabelValues(c.Request.Method, path, strconv.Itoa(c.Writer.Status())).Inc()
+		httpRequestDuration.WithLabelValues(c.Request.Method, path).Observe(duration)
+	}
+}
 
 func RequestIdMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -24,7 +63,7 @@ func RequestIdMiddleware() gin.HandlerFunc {
 	}
 }
 
-func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
+func LoggerMiddleware(logger logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// пре-процессинг
 		start := time.Now()
@@ -41,23 +80,23 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		reqID, _ := c.Get("requestID")
 
 		logger.Info("request completed",
-			zap.String("request_id", reqID.(string)),
-			zap.String("method", method),
-			zap.String("path", path),
-			zap.String("ip", clientIP),
-			zap.Int("status", status),
-			zap.Int("size", size),
-			zap.Duration("latency", latency),
+			"request_id: ", reqID.(string),
+			"method: ", method,
+			"path: ", path,
+			"ip: ", clientIP,
+			"status: ", status,
+			"size: ", size,
+			"latency: ", latency,
 		)
 	}
 }
 
-func AuthorizationMiddleware(logger *zap.Logger) gin.HandlerFunc {
+func AuthorizationMiddleware(logger logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
 		clientID, err := authorization.ValidateJWT(token)
 		if err != nil {
-			logger.Error("token validation error", zap.Error(err))
+			logger.Error("token validation error", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized,
 				gin.H{"error": "invalid access token"})
 			return

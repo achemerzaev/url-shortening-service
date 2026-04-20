@@ -1,12 +1,11 @@
 package syncer
 
 import (
-	"github.com/redis/go-redis/v9"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"context"
 	"strings"
-	"fmt"
 )
 
 func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Pool) error {
@@ -15,7 +14,7 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 	iter := rdb.Scan(ctx, 0, pattern, 0).Iterator()
 
 	updates := make([]struct {
-		ShortCode string
+		ShortCode   string
 		AccessCount string
 	}, 0, 100)
 
@@ -33,7 +32,7 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 		}
 
 		updates = append(updates, struct {
-			ShortCode string
+			ShortCode   string
 			AccessCount string
 		}{urlCode, count})
 	}
@@ -43,10 +42,8 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 	}
 
 	if len(updates) == 0 {
-		fmt.Printf("nil for now")
 		return nil
 	}
-	fmt.Printf("not nil for now")
 
 	// build query string
 	var sb strings.Builder
@@ -63,7 +60,7 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 
 	sb.WriteString("END WHERE ShortCode IN (")
 
-	i:= 0
+	i := 0
 	for _, value := range updates {
 		if i > 0 {
 			sb.WriteByte(',')
