@@ -51,7 +51,7 @@ func setupTestApp(t *testing.T) *TestApp {
 	var RedisCfg config.RedisConfig
 	RedisCfg.Addr = os.Getenv("REDIS_ADDR")              // "localhost:6379"
 	RedisCfg.DB, _ = strconv.Atoi(os.Getenv("REDIS_DB")) // 0
-	RedisCfg.Password = os.Getenv("REDIS_PASSWORD")      // "bigsecret"
+	// RedisCfg.Password = os.Getenv("REDIS_PASSWORD")      // "bigsecret"
 
 	redisClient, err := database.NewRedis(RedisCfg)
 	require.NoError(t, err)
