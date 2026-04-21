@@ -7,8 +7,6 @@ import (
 
 	"github.com/achemerzaev/url-shortening-service/internal/authorization"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
-	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
-	"github.com/achemerzaev/url-shortening-service/internal/repository"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
@@ -18,13 +16,28 @@ import (
 	"time"
 )
 
+type UserRepository interface {
+	RepoInsertUser(ctx context.Context, newUser models.PostUserRegistration) (models.User, error)
+	RepoRetrieveUser(ctx context.Context, email string) (string, error)
+}
+
+type RedisRepository interface {
+	SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error
+	GetRefreshToken(ctx context.Context, userID string) (string, error)
+	SaveUrl(ctx context.Context, data models.UrlInfo) error
+	GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error)
+	GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error)
+	UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
+	DeleteUrl(ctx context.Context, shortCode string, ownerID int) error
+}
+
 type UserService struct {
-	repo      *repository.UserRepository
-	redisrepo *redisrepo.RedisRepository
+	repo      UserRepository
+	redisrepo RedisRepository
 	logger    logger.Logger
 }
 
-func NewUserService(r *repository.UserRepository, redisr *redisrepo.RedisRepository, logger logger.Logger) *UserService {
+func NewUserService(r UserRepository, redisr RedisRepository, logger logger.Logger) *UserService {
 	return &UserService{repo: r, redisrepo: redisr, logger: logger}
 }
 

@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
-	"github.com/achemerzaev/url-shortening-service/internal/redisrepo"
-	"github.com/achemerzaev/url-shortening-service/internal/repository"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
@@ -17,17 +15,25 @@ import (
 	"time"
 )
 
-type UrlService struct {
-	repo      *repository.UrlRepository
-	redisrepo *redisrepo.RedisRepository
+type URLRepository interface {
+	RepositoryPost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error)
+	RepositoryGet(ctx context.Context, requestedCode string) (models.UrlInfo, error)
+	RepositoryUpdate(ctx context.Context, requestedCode string, longurl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
+	RepositoryDelete(ctx context.Context, requestedCode string, ownerID int) error
+	RepositoryGetStats(ctx context.Context, requestedCode string) (models.UrlInfo, error)
+}
+
+type URLService struct {
+	repo      URLRepository
+	redisrepo RedisRepository
 	logger    logger.Logger
 }
 
-func NewUrlService(r *repository.UrlRepository, redisr *redisrepo.RedisRepository, logger logger.Logger) *UrlService {
-	return &UrlService{repo: r, redisrepo: redisr, logger: logger}
+func NewUrlService(r URLRepository, redisr RedisRepository, logger logger.Logger) *URLService {
+	return &URLService{repo: r, redisrepo: redisr, logger: logger}
 }
 
-func (s *UrlService) ServicePost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error) {
+func (s *URLService) ServicePost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error) {
 	data.CreatedAt = time.Now()
 	data.UpdatedAt = data.CreatedAt
 	code, err := GenerateShortCode()
@@ -62,7 +68,7 @@ func GenerateShortCode() (string, error) {
 	return string(ran_str), nil
 }
 
-func (s *UrlService) ServiceGet(ctx context.Context, requestedCode string, ownerID int) (string, error) {
+func (s *URLService) ServiceGet(ctx context.Context, requestedCode string, ownerID int) (string, error) {
 	var newData models.UrlInfo
 	longUrl, err := s.redisrepo.GetUrl(ctx, requestedCode, ownerID)
 	if err != nil && errors.Is(err, appErr.ErrForbidden) {
@@ -88,7 +94,7 @@ func (s *UrlService) ServiceGet(ctx context.Context, requestedCode string, owner
 	return longUrl, nil
 }
 
-func (s *UrlService) ServicePut(ctx context.Context, requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
+func (s *URLService) ServicePut(ctx context.Context, requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
 	if !strings.HasPrefix(longUrl, "http://") && !strings.HasPrefix(longUrl, "https://") {
 		longUrl = "https://" + longUrl
 	}
@@ -115,7 +121,7 @@ func (s *UrlService) ServicePut(ctx context.Context, requestedCode string, longU
 	return newData, nil
 }
 
-func (s *UrlService) ServiceDelete(ctx context.Context, requestedCode string, ownerID int) error {
+func (s *URLService) ServiceDelete(ctx context.Context, requestedCode string, ownerID int) error {
 	err := s.redisrepo.DeleteUrl(ctx, requestedCode, ownerID)
 	if err != nil && !errors.Is(err, appErr.ErrNotFound) {
 		if errors.Is(err, appErr.ErrForbidden) {
@@ -136,7 +142,7 @@ func (s *UrlService) ServiceDelete(ctx context.Context, requestedCode string, ow
 	return nil
 }
 
-func (s *UrlService) ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.UrlInfo, error) {
+func (s *URLService) ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.UrlInfo, error) {
 	var newData models.UrlInfo
 	newData, err := s.redisrepo.GetUrlStats(ctx, requestedCode, ownerID)
 	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
