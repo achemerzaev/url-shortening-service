@@ -43,16 +43,16 @@ func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) erro
 }
 
 func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error) {
-	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
+	res, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 
-	if err == redis.Nil {
-		return "", err
-	}
 	if err != nil {
-		r.logger.Error("Error getting owner_id from redis", err)
+		if err != redis.Nil {
+			r.logger.Error("Error getting owner_id from redis", err)
+		}
 		return "", err
 	}
-	resint, err := strconv.Atoi(res)
+
+	resint, err := strconv.Atoi(res["owner_id"])
 	if err != nil || resint != ownerID {
 		r.logger.Error("User doesn't own this resource", err)
 		return "", errors.New("user doesn't own this resource")
@@ -62,13 +62,8 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 		r.logger.Error("Error incrimenting access_count in redis", err)
 		return "", err
 	}
-	res, err = r.client.HGet(ctx, "short:"+shortCode, "url").Result()
-	if err != nil || len(res) == 0 {
-		r.logger.Error("Error getting long_url from redis", err)
-		return "", err
-	}
 
-	return string(res), nil
+	return res["url"], nil
 }
 
 func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error) {

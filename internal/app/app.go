@@ -1,6 +1,13 @@
 package app
 
 import (
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/achemerzaev/url-shortening-service/database"
 	"github.com/achemerzaev/url-shortening-service/internal/config"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
@@ -48,12 +55,36 @@ func Run() {
 	}()
 
 	// 6. Создаем и связываем слои
-	handlers := BuildHanlers(pgPool, rdb, logger)
+	handlers := BuildHandlers(pgPool, rdb, logger)
 
 	// 7. Настраиваем роутер
 	router := SetupRouter(handlers, logger)
-	err = router.Run(":8080")
-	if err != nil {
-		logger.Fatal("Router starting error: ", err)
+
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+
+	go func() {
+		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("Router starting error: ", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Fatal("Server forced to shutdown: ", err)
+	}
+
+	logger.Info("Server exited")
+
 }

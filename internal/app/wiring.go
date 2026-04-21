@@ -16,7 +16,7 @@ type Handlers struct {
 	User *handler.UserHandler
 }
 
-func BuildHanlers(pgPool *pgxpool.Pool, rdb *redis.Client, logger logger.Logger) Handlers {
+func BuildHandlers(pgPool *pgxpool.Pool, rdb *redis.Client, logger logger.Logger) Handlers {
 	// Redis
 	redisRepo := redisrepo.NewRedisRepository(rdb, logger)
 
