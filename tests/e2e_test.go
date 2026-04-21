@@ -171,7 +171,7 @@ func TestEmailDuplicate(t *testing.T) {
 func TestInvalidToken(t *testing.T) {
 	app := setupTestApp(t)
 
-	AccessToken := "unvalid.access.token"
+	AccessToken := "invalid.access.token"
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "mail.ru"}`))
 	req.Header.Set("Authorization", AccessToken)

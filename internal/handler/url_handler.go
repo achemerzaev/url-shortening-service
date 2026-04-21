@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
-	"github.com/achemerzaev/url-shortening-service/internal/service"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -13,12 +12,20 @@ import (
 	"net/http"
 )
 
+type URLService interface {
+	ServicePost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error)
+	ServiceGet(ctx context.Context, requestedCode string, ownerID int) (string, error)
+	ServicePut(ctx context.Context, requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error)
+	ServiceDelete(ctx context.Context, requestedCode string, ownerID int) error
+	ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.UrlInfo, error)
+}
+
 type URLHandler struct {
-	service *service.UrlService
+	service URLService
 	logger  logger.Logger
 }
 
-func NewUrlHandler(s *service.UrlService, logger logger.Logger) *URLHandler {
+func NewUrlHandler(s URLService, logger logger.Logger) *URLHandler {
 	return &URLHandler{service: s, logger: logger}
 }
 

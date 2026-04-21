@@ -8,19 +8,24 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
-	"github.com/achemerzaev/url-shortening-service/internal/service"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"net/http"
 )
 
+type UserService interface {
+	ServiceRegister(ctx context.Context, newUser models.PostUserRegistration) (models.User, models.Tokens, error)
+	ServiceLogin(ctx context.Context, userinfo models.User) (models.Tokens, error)
+	ServiceRefresh(ctx context.Context, refreshToken string) (models.Tokens, error)
+}
+
 type UserHandler struct {
-	service *service.UserService
+	service UserService
 	logger  logger.Logger
 }
 
-func NewUserHandler(s *service.UserService, logger logger.Logger) *UserHandler {
+func NewUserHandler(s UserService, logger logger.Logger) *UserHandler {
 	return &UserHandler{service: s, logger: logger}
 }
 
