@@ -18,16 +18,17 @@ type Handlers struct {
 
 func BuildHandlers(pgPool *pgxpool.Pool, rdb *redis.Client, logger logger.Logger) Handlers {
 	// Redis
-	redisRepo := redisrepo.NewRedisRepository(rdb, logger)
+	redisURLRepo := redisrepo.NewRedisURLRepository(rdb, logger)
+	redisUserRepo := redisrepo.NewRedisUserRepository(rdb, logger)
 
 	// URL
 	urlRepo := repository.NewUrlRepository(pgPool, logger)
-	urlService := service.NewUrlService(urlRepo, redisRepo, logger)
+	urlService := service.NewUrlService(urlRepo, redisURLRepo, logger)
 	urlHandler := handler.NewUrlHandler(urlService, logger)
 
 	// User
 	userRepo := repository.NewUserRepository(pgPool, logger)
-	userService := service.NewUserService(userRepo, redisRepo, logger)
+	userService := service.NewUserService(userRepo, redisUserRepo, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 
 	return Handlers{

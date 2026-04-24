@@ -23,13 +23,21 @@ type URLRepository interface {
 	RepositoryGetStats(ctx context.Context, requestedCode string) (models.UrlInfo, error)
 }
 
+type RedisURLRepository interface {
+	SaveUrl(ctx context.Context, data models.UrlInfo) error
+	GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error)
+	GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error)
+	UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
+	DeleteUrl(ctx context.Context, shortCode string, ownerID int) error
+}
+
 type URLService struct {
 	repo      URLRepository
-	redisrepo RedisRepository
+	redisrepo RedisURLRepository
 	logger    logger.Logger
 }
 
-func NewUrlService(r URLRepository, redisr RedisRepository, logger logger.Logger) *URLService {
+func NewUrlService(r URLRepository, redisr RedisURLRepository, logger logger.Logger) *URLService {
 	return &URLService{repo: r, redisrepo: redisr, logger: logger}
 }
 
@@ -103,7 +111,7 @@ func (s *URLService) ServicePut(ctx context.Context, requestedCode string, longU
 	if err != nil && errors.Is(err, appErr.ErrForbidden) {
 		return newData, appErr.ErrForbidden
 	} else if err != nil {
-		newData, err := s.repo.RepositoryUpdate(ctx, requestedCode, longUrl, updatedAt, ownerID)
+		newData, err = s.repo.RepositoryUpdate(ctx, requestedCode, longUrl, updatedAt, ownerID)
 		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
 			return newData, appErr.ErrForbidden
 		} else if err != nil {

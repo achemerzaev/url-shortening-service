@@ -59,14 +59,16 @@ func setupTestApp(t *testing.T) *TestApp {
 	logger, err := logger.New("debug")
 	require.NoError(t, err)
 
-	redisRepo := redisrepo.NewRedisRepository(redisClient, logger)
+	redisURLRepo := redisrepo.NewRedisURLRepository(redisClient, logger)
 
 	urlRepo := repository.NewUrlRepository(pool, logger)
-	urlService := service.NewUrlService(urlRepo, redisRepo, logger)
+	urlService := service.NewUrlService(urlRepo, redisURLRepo, logger)
 	urlHandler := handler.NewUrlHandler(urlService, logger)
 
+	redisUserRepo := redisrepo.NewRedisUserRepository(redisClient, logger)
+
 	userRepo := repository.NewUserRepository(pool, logger)
-	userService := service.NewUserService(userRepo, redisRepo, logger)
+	userService := service.NewUserService(userRepo, redisUserRepo, logger)
 	userHandler := handler.NewUserHandler(userService, logger)
 
 	router := gin.New()
