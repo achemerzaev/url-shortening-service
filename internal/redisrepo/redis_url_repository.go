@@ -1,36 +1,27 @@
 package redisrepo
 
 import (
-	"github.com/achemerzaev/url-shortening-service/internal/models"
-	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
-	"github.com/achemerzaev/url-shortening-service/pkg/logger"
-
-	"github.com/redis/go-redis/v9"
-
 	"context"
 	"errors"
 	"strconv"
 	"time"
+
+	"github.com/achemerzaev/url-shortening-service/internal/models"
+	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
+	"github.com/achemerzaev/url-shortening-service/pkg/logger"
+	"github.com/redis/go-redis/v9"
 )
 
-type RedisRepository struct {
+type RedisURLRepository struct {
 	client *redis.Client
 	logger logger.Logger
 }
 
-func NewRedisRepository(client *redis.Client, logger logger.Logger) *RedisRepository {
-	return &RedisRepository{client: client, logger: logger}
+func NewRedisURLRepository(client *redis.Client, logger logger.Logger) *RedisURLRepository {
+	return &RedisURLRepository{client: client, logger: logger}
 }
 
-func (r *RedisRepository) SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error {
-	return r.client.Set(ctx, "refresh:"+userID, token, ttl).Err()
-}
-
-func (r *RedisRepository) GetRefreshToken(ctx context.Context, userID string) (string, error) {
-	return r.client.Get(ctx, "refresh:"+userID).Result()
-}
-
-func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) error {
+func (r *RedisURLRepository) SaveUrl(ctx context.Context, data models.UrlInfo) error {
 	err := r.client.HSet(ctx, "short:"+data.ShortCode, map[string]interface{}{
 		"id":           data.Id,
 		"url":          data.Url,
@@ -42,7 +33,7 @@ func (r *RedisRepository) SaveUrl(ctx context.Context, data models.UrlInfo) erro
 	return err
 }
 
-func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error) {
+func (r *RedisURLRepository) GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error) {
 	res, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 
 	if err != nil {
@@ -66,7 +57,7 @@ func (r *RedisRepository) GetUrl(ctx context.Context, shortCode string, ownerID 
 	return res["url"], nil
 }
 
-func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error) {
+func (r *RedisURLRepository) GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error) {
 	result, err := r.client.HGetAll(ctx, "short:"+shortCode).Result()
 	var data models.UrlInfo
 	if err != nil {
@@ -99,7 +90,7 @@ func (r *RedisRepository) GetUrlStats(ctx context.Context, shortCode string, own
 	return data, nil
 }
 
-func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error) {
+func (r *RedisURLRepository) UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error) {
 	var data models.UrlInfo
 	res, err := r.client.HGet(ctx, "short:"+requestedCode, "owner_id").Result()
 	if err != nil {
@@ -129,7 +120,7 @@ func (r *RedisRepository) UpdateUrl(ctx context.Context, requestedCode, newLongU
 	return data, nil
 }
 
-func (r *RedisRepository) DeleteUrl(ctx context.Context, shortCode string, ownerID int) error {
+func (r *RedisURLRepository) DeleteUrl(ctx context.Context, shortCode string, ownerID int) error {
 	res, err := r.client.HGet(ctx, "short:"+shortCode, "owner_id").Result()
 	if err != nil {
 		r.logger.Error("Error getting owner_id from redis in delete", err)

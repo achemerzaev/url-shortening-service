@@ -21,23 +21,18 @@ type UserRepository interface {
 	RepoRetrieveUser(ctx context.Context, email string) (string, error)
 }
 
-type RedisRepository interface {
+type RedisUserRepository interface {
 	SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error
 	GetRefreshToken(ctx context.Context, userID string) (string, error)
-	SaveUrl(ctx context.Context, data models.UrlInfo) error
-	GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error)
-	GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error)
-	UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
-	DeleteUrl(ctx context.Context, shortCode string, ownerID int) error
 }
 
 type UserService struct {
 	repo      UserRepository
-	redisrepo RedisRepository
+	redisrepo RedisUserRepository
 	logger    logger.Logger
 }
 
-func NewUserService(r UserRepository, redisr RedisRepository, logger logger.Logger) *UserService {
+func NewUserService(r UserRepository, redisr RedisUserRepository, logger logger.Logger) *UserService {
 	return &UserService{repo: r, redisrepo: redisr, logger: logger}
 }
 
