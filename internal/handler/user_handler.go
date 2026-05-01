@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/achemerzaev/url-shortening-service/internal/dto"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
@@ -15,7 +16,7 @@ import (
 )
 
 type UserService interface {
-	ServiceRegister(ctx context.Context, newUser models.PostUserRegistration) (models.User, models.Tokens, error)
+	ServiceRegister(ctx context.Context, newUser models.User) (models.User, models.Tokens, error)
 	ServiceLogin(ctx context.Context, userinfo models.User) (models.Tokens, error)
 	ServiceRefresh(ctx context.Context, refreshToken string) (models.Tokens, error)
 }
@@ -29,13 +30,29 @@ func NewUserHandler(s UserService, logger logger.Logger) *UserHandler {
 	return &UserHandler{service: s, logger: logger}
 }
 
+// @Summary Register user
+// @Description Registers user and returns jwt tokens
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body dto.HandlerRegisterRequest true "payload"
+// @Success 201 {object} dto.HandlerRegisterResponse
+// @Failure 409 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /register [post]
 func (h *UserHandler) HandlerRegister(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	newUser, _ := c.Get("jsonBody")
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
+	newerUser := newUser.(*dto.HandlerRegisterRequest)
+	convertedUser := models.User{
+		Name:     newerUser.Name,
+		Email:    newerUser.Email,
+		Password: newerUser.Password,
+	}
 
-	_, tokens, err := h.service.ServiceRegister(ctx, *newUser.(*models.PostUserRegistration))
+	_, tokens, err := h.service.ServiceRegister(ctx, convertedUser)
 	if err != nil {
 		ErrorHandler(c, err, h.logger)
 		return
@@ -44,6 +61,16 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 
 }
 
+// @Summary Login user
+// @Description User login with email and password
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body dto.HandlerLoginRequest true "payload"
+// @Success 201 {object} dto.HandlerLoginResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /login [post]
 func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	loginUser, _ := c.Get("jsonBody")
@@ -51,8 +78,8 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	defer cancel()
 
 	var userInfo models.User
-	userInfo.Email, userInfo.Password = loginUser.(*models.PostUserLogin).Email,
-		loginUser.(*models.PostUserLogin).Password
+	userInfo.Email, userInfo.Password = loginUser.(*dto.HandlerLoginRequest).Email,
+		loginUser.(*dto.HandlerLoginRequest).Password
 
 	tokens, err := h.service.ServiceLogin(ctx, userInfo)
 	if err != nil {
@@ -62,13 +89,22 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, tokens)
 }
 
+// @Summary Update Refresh token
+// @Description Creates new refresh token for a user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body dto.HandlerRefreshRequest true "payload"
+// @Success 201 {object} dto.HandlerRefreshResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /refresh [post]
 func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 	c.Header("Content-Type", "application/json")
 	refreshToken, _ := c.Get("jsonBody")
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	tokens, err := h.service.ServiceRefresh(ctx, refreshToken.(*models.PostRefreshToken).RefreshToken)
+	tokens, err := h.service.ServiceRefresh(ctx, refreshToken.(*dto.HandlerRefreshRequest).RefreshToken)
 
 	if err != nil {
 		ErrorHandler(c, err, h.logger)

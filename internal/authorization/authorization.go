@@ -38,6 +38,7 @@ func GenerateJWT(userId int, ttl time.Duration) (string, error) {
 // идентификатор пользователя userID. Если токен недействителен или
 // истек, возвращает ошибку
 func ValidateJWT(tokenString string) (int, error) {
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/achemerzaev/url-shortening-service/internal/dto"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
@@ -29,6 +30,16 @@ func NewUrlHandler(s URLService, logger logger.Logger) *URLHandler {
 	return &URLHandler{service: s, logger: logger}
 }
 
+// @Summary Create short URL
+// @Description Creates short link for provided long link
+// @Tags urls
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.HandlerPostRequest true "payload"
+// @Success 201 {object} dto.HandlerPostResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /shorten [post]
 func (h *URLHandler) HandlerPost(c *gin.Context) {
 	// database inserting error
 	c.Header("Content-Type", "application/json")
@@ -38,7 +49,7 @@ func (h *URLHandler) HandlerPost(c *gin.Context) {
 	defer cancel()
 
 	var newUrl models.UrlInfo
-	newUrl.Url = userUrl.(*models.PostRequestJSON).Url
+	newUrl.Url = userUrl.(*dto.HandlerPostRequest).URL
 	newUrl.OwnerID = clientID.(int)
 	newUrl, err := h.service.ServicePost(ctx, newUrl)
 	if err != nil {
@@ -48,6 +59,17 @@ func (h *URLHandler) HandlerPost(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, newUrl)
 }
 
+// @Summary Get short URL
+// @Description Retrieves short link for provided long link
+// @Tags urls
+// @Produce json
+// @Security BearerAuth
+// @Param shortcode path string true "short code"
+// @Success 201 {object} dto.HandlerGetResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /shorten/{shortcode} [get]
 func (h *URLHandler) HandlerGet(c *gin.Context) {
 	clientID, _ := c.Get("clientID")
 	requestedCode := c.Param("shortcode")
@@ -63,6 +85,18 @@ func (h *URLHandler) HandlerGet(c *gin.Context) {
 	c.Redirect(http.StatusFound, longUrl)
 }
 
+// @Summary Change long URL
+// @Description Changes long link for provided short link
+// @Tags urls
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.HandlerPutRequest true "payload"
+// @Param shortcode path string true "short code"
+// @Success 201 {object} dto.HandlerPutResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /shorten/{shortcode} [put]
 func (h *URLHandler) HandlerPut(c *gin.Context) {
 	// needed short url and new long url
 	c.Header("Content-Type", "application/json")
@@ -72,7 +106,7 @@ func (h *URLHandler) HandlerPut(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	newData, err := h.service.ServicePut(ctx, requestedCode, newUrl.(*models.PutRequestJSON).Url, clientID.(int))
+	newData, err := h.service.ServicePut(ctx, requestedCode, newUrl.(*dto.HandlerPutRequest).URL, clientID.(int))
 	if err != nil {
 		ErrorHandler(c, err, h.logger)
 		return
@@ -80,6 +114,16 @@ func (h *URLHandler) HandlerPut(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, newData)
 }
 
+// @Summary Delete short url
+// @Description Deletes short url
+// @Tags urls
+// @Security BearerAuth
+// @Param shortcode path string true "short code"
+// @Success 204
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /shorten/{shortcode} [delete]
 func (h *URLHandler) HandlerDelete(c *gin.Context) {
 	clientID, _ := c.Get("clientID")
 	requestedCode := c.Param("shortcode")
@@ -94,6 +138,17 @@ func (h *URLHandler) HandlerDelete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary Get statistics
+// @Description Get statistics for short URL
+// @Tags urls
+// @Produce json
+// @Security BearerAuth
+// @Param shortcode path string true "short code"
+// @Success 201 {object} dto.HandlerGetStatsResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Failure 500 {object} dto.ErrorResponse
+// @Router /shorten/{shortcode}/stats [get]
 func (h *URLHandler) HandlerGetStats(c *gin.Context) {
 	clientID, _ := c.Get("clientID")
 	requestedCode := c.Param("shortcode")

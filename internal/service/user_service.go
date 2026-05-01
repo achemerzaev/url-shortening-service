@@ -17,8 +17,8 @@ import (
 )
 
 type UserRepository interface {
-	RepoInsertUser(ctx context.Context, newUser models.PostUserRegistration) (models.User, error)
-	RepoRetrieveUser(ctx context.Context, email string) (string, error)
+	RepoInsertUser(ctx context.Context, newUser models.User) (models.User, error)
+	RepoRetrieveUser(ctx context.Context, email string) (models.User, error)
 }
 
 type RedisUserRepository interface {
@@ -36,12 +36,11 @@ func NewUserService(r UserRepository, redisr RedisUserRepository, logger logger.
 	return &UserService{repo: r, redisrepo: redisr, logger: logger}
 }
 
-func (s *UserService) ServiceRegister(ctx context.Context, newUser models.PostUserRegistration) (models.User, models.Tokens, error) {
+func (s *UserService) ServiceRegister(ctx context.Context, newUser models.User) (models.User, models.Tokens, error) {
 	var insertedUser models.User
 	var tokens models.Tokens
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
-	err := bcrypt.CompareHashAndPassword(hash, []byte(newUser.Password))
+	hash, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return insertedUser, tokens, fmt.Errorf("service register error hashing password: %w", err)
 	}
@@ -76,7 +75,7 @@ func (s *UserService) ServiceRegister(ctx context.Context, newUser models.PostUs
 
 func (s *UserService) ServiceLogin(ctx context.Context, userinfo models.User) (models.Tokens, error) {
 	var tokens models.Tokens
-	storedPassword, err := s.repo.RepoRetrieveUser(ctx, userinfo.Email)
+	retrievedUser, err := s.repo.RepoRetrieveUser(ctx, userinfo.Email)
 	if err != nil {
 		if errors.Is(err, appErr.ErrInvalidCredentials) {
 			return tokens, appErr.ErrInvalidCredentials
@@ -84,23 +83,23 @@ func (s *UserService) ServiceLogin(ctx context.Context, userinfo models.User) (m
 		return tokens, fmt.Errorf("service login repo retrieve user error: %w", err)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(userinfo.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(retrievedUser.Password), []byte(userinfo.Password))
 	if err != nil {
 		return tokens, appErr.ErrInvalidCredentials
 	}
 
-	tokens.AccessToken, err = authorization.GenerateJWT(userinfo.Id, 1*time.Hour)
+	tokens.AccessToken, err = authorization.GenerateJWT(retrievedUser.Id, 1*time.Hour)
 	if err != nil {
 		return tokens, appErr.ErrGeneratingJWT
 	}
 
-	tokens.RefreshToken, err = authorization.GenerateJWT(userinfo.Id, 7*24*time.Hour)
+	tokens.RefreshToken, err = authorization.GenerateJWT(retrievedUser.Id, 7*24*time.Hour)
 	if err != nil {
 		return tokens, appErr.ErrGeneratingJWT
 	}
 
 	err = s.redisrepo.SaveRefreshToken(ctx,
-		strconv.Itoa(userinfo.Id), tokens.RefreshToken, 7*24*time.Hour)
+		strconv.Itoa(retrievedUser.Id), tokens.RefreshToken, 7*24*time.Hour)
 	if err != nil {
 		return tokens, fmt.Errorf("service login save refresh token err: %w", err)
 	}
@@ -118,25 +117,31 @@ func (s *UserService) ServiceRefresh(ctx context.Context, refreshToken string) (
 
 	oldRefresh, err := s.redisrepo.GetRefreshToken(ctx, strconv.Itoa(userID))
 	if err != nil {
+
 		return tokens, fmt.Errorf("service refresh get refresh token err: %w", err)
 	}
 
 	if oldRefresh != refreshToken {
+
 		return tokens, appErr.ErrInvalidToken
 	}
 
 	tokens.AccessToken, err = authorization.GenerateJWT(userID, 1*time.Hour)
 	if err != nil {
+
 		return tokens, appErr.ErrGeneratingJWT
 	}
 	tokens.RefreshToken, err = authorization.GenerateJWT(userID, 7*24*time.Hour)
 	if err != nil {
+
 		return tokens, appErr.ErrGeneratingJWT
 	}
 
 	err = s.redisrepo.SaveRefreshToken(ctx,
 		strconv.Itoa(userID), tokens.RefreshToken, 7*24*time.Hour)
 	if err != nil {
+		fmt.Println("err6")
+
 		return tokens, fmt.Errorf("service refresh save refresh token err: %w", err)
 	}
 
