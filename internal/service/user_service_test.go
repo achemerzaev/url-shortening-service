@@ -25,7 +25,7 @@ type RedisRow struct {
 	Ttl   time.Duration
 }
 
-func (r *mockUserRepository) RepoInsertUser(ctx context.Context, newUser models.PostUserRegistration) (models.User, error) {
+func (r *mockUserRepository) RepoInsertUser(ctx context.Context, newUser models.User) (models.User, error) {
 	if _, ok := r.db[newUser.Email]; ok {
 		return models.User{}, appErr.ErrEmailExists
 	}
@@ -40,11 +40,11 @@ func (r *mockUserRepository) RepoInsertUser(ctx context.Context, newUser models.
 	return insert, nil
 }
 
-func (r *mockUserRepository) RepoRetrieveUser(ctx context.Context, email string) (string, error) {
+func (r *mockUserRepository) RepoRetrieveUser(ctx context.Context, email string) (models.User, error) {
 	if v, ok := r.db[email]; !ok {
-		return "", appErr.ErrNotFound
+		return v, appErr.ErrNotFound
 	} else {
-		return v.Password, nil
+		return v, nil
 	}
 }
 
@@ -80,7 +80,7 @@ func setupusersvc() *UserService {
 func TestServiceRegister_Success(t *testing.T) {
 	svc := setupusersvc()
 
-	newUser := models.PostUserRegistration{
+	newUser := models.User{
 		Name:     "John",
 		Email:    "john@gmail.com",
 		Password: "john123",
@@ -96,7 +96,7 @@ func TestServiceRegister_Success(t *testing.T) {
 func TestServiceLogin_Success(t *testing.T) {
 	svc := setupusersvc()
 
-	newUser := models.PostUserRegistration{
+	newUser := models.User{
 		Name:     "John",
 		Email:    "john@gmail.com",
 		Password: "john123",
@@ -112,7 +112,7 @@ func TestServiceLogin_Success(t *testing.T) {
 func TestServiceLogin_NotFound(t *testing.T) {
 	svc := setupusersvc()
 
-	newUser := models.PostUserRegistration{
+	newUser := models.User{
 		Name:     "John",
 		Email:    "john@gmail.com",
 		Password: "john123",
@@ -129,7 +129,7 @@ func TestServiceLogin_NotFound(t *testing.T) {
 func TestServiceLogin_InvalidPassword(t *testing.T) {
 	svc := setupusersvc()
 
-	newUser := models.PostUserRegistration{
+	newUser := models.User{
 		Name:     "John",
 		Email:    "john@gmail.com",
 		Password: "john123",
@@ -146,7 +146,7 @@ func TestServiceLogin_InvalidPassword(t *testing.T) {
 func TestServiceRefresh_Success(t *testing.T) {
 	svc := setupusersvc()
 
-	newUser := models.PostUserRegistration{
+	newUser := models.User{
 		Name:     "John",
 		Email:    "john@gmail.com",
 		Password: "john123",

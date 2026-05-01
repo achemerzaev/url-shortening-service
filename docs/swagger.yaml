@@ -1,0 +1,386 @@
+definitions:
+  github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerGetResponse:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerGetStatsResponse:
+    properties:
+      accessed:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      owner_id:
+        type: integer
+      shortcode:
+        type: string
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerLoginResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - access_token
+    - refresh_token
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPostRequest:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPostResponse:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPutRequest:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPutResponse:
+    properties:
+      accessed:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      owner_id:
+        type: integer
+      shortcode:
+        type: string
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRefreshResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - access_token
+    - refresh_token
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRegisterResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - access_token
+    - refresh_token
+    type: object
+info:
+  contact: {}
+  description: URL shortener service
+  title: URL shortener API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: User login with email and password
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerLoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      summary: Login user
+      tags:
+      - users
+  /refresh:
+    post:
+      consumes:
+      - application/json
+      description: Creates new refresh token for a user
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRefreshResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      summary: Update Refresh token
+      tags:
+      - users
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Registers user and returns jwt tokens
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerRegisterResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      summary: Register user
+      tags:
+      - users
+  /shorten:
+    post:
+      consumes:
+      - application/json
+      description: Creates short link for provided long link
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPostRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPostResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create short URL
+      tags:
+      - urls
+  /shorten/{shortcode}:
+    delete:
+      description: Deletes short url
+      parameters:
+      - description: short code
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete short url
+      tags:
+      - urls
+    get:
+      description: Retrieves short link for provided long link
+      parameters:
+      - description: short code
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerGetResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get short URL
+      tags:
+      - urls
+    put:
+      description: Changes long link for provided short link
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPutRequest'
+      - description: short code
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerPutResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change long URL
+      tags:
+      - urls
+  /shorten/{shortcode}/stats:
+    get:
+      description: Get statistics for short URL
+      parameters:
+      - description: short code
+        in: path
+        name: shortcode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.HandlerGetStatsResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_achemerzaev_url-shortening-service_internal_dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get statistics
+      tags:
+      - urls
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -22,7 +22,7 @@ func NewUserRepository(db *pgxpool.Pool, logger logger.Logger) *UserRepository {
 	return &UserRepository{db: db, logger: logger}
 }
 
-func (r *UserRepository) RepoInsertUser(ctx context.Context, newUser models.PostUserRegistration) (models.User, error) {
+func (r *UserRepository) RepoInsertUser(ctx context.Context, newUser models.User) (models.User, error) {
 	var checkInsertedInfo models.User
 	err := r.db.QueryRow(ctx,
 		"INSERT INTO url_users (Name, Email, Password) VALUES ($1, $2, $3) RETURNING Id, Name, Email",
@@ -40,14 +40,14 @@ func (r *UserRepository) RepoInsertUser(ctx context.Context, newUser models.Post
 	return checkInsertedInfo, err
 }
 
-func (r *UserRepository) RepoRetrieveUser(ctx context.Context, email string) (string, error) {
-	var password string
+func (r *UserRepository) RepoRetrieveUser(ctx context.Context, email string) (models.User, error) {
+	var Credentials models.User
 	err := r.db.QueryRow(ctx,
-		"SELECT Password FROM url_users WHERE Email = $1",
-		email).Scan(&password)
+		"SELECT * FROM url_users WHERE Email = $1",
+		email).Scan(&Credentials.Id, &Credentials.Name, &Credentials.Email, &Credentials.Password)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return password, appErr.ErrInvalidCredentials
+		return Credentials, appErr.ErrInvalidCredentials
 	}
 
-	return password, err
+	return Credentials, err
 }

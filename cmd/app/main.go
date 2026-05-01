@@ -1,3 +1,11 @@
+// @title URL shortener API
+// @version 1.0
+// @description URL shortener service
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
 package main
 
 import "github.com/achemerzaev/url-shortening-service/internal/app"

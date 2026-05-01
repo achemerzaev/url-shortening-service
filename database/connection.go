@@ -20,8 +20,8 @@ func NewPostgres(cfg config.DBConfig) (*pgxpool.Pool, error) {
 
 	config, _ := pgxpool.ParseConfig(dsn)
 
-	config.MaxConns = 10
-	config.MinConns = 2
+	config.MaxConns = 25
+	config.MinConns = 5
 	config.MaxConnLifetime = time.Hour
 	config.MaxConnIdleTime = 30 * time.Minute
 

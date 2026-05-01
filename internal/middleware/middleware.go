@@ -2,14 +2,13 @@ package middleware
 
 import (
 	"github.com/achemerzaev/url-shortening-service/internal/authorization"
-	"github.com/achemerzaev/url-shortening-service/internal/models"
+	"github.com/achemerzaev/url-shortening-service/internal/dto"
 	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -46,7 +45,7 @@ func PrometheusMiddleware() gin.HandlerFunc {
 		c.Next()
 
 		duration := time.Since(start).Seconds()
-		path := c.Request.URL.Path
+		path := c.FullPath()
 
 		httpRequestsTotal.WithLabelValues(c.Request.Method, path, strconv.Itoa(c.Writer.Status())).Inc()
 		httpRequestDuration.WithLabelValues(c.Request.Method, path).Observe(duration)
@@ -66,35 +65,43 @@ func RequestIdMiddleware() gin.HandlerFunc {
 func LoggerMiddleware(logger logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// пре-процессинг
-		start := time.Now()
-		path := c.Request.URL.Path
-		clientIP := c.ClientIP()
-		method := c.Request.Method
+		// start := time.Now()
+		// path := c.Request.URL.Path
+		// clientIP := c.ClientIP()
+		// method := c.Request.Method
 		// другие мидлверы и хендлеры
-		c.Next()
+		// c.Next()
 
 		// пост-процессинг
-		latency := time.Since(start)
-		status := c.Writer.Status()
-		size := c.Writer.Size()
-		reqID, _ := c.Get("requestID")
+		// latency := time.Since(start)
+		// status := c.Writer.Status()
+		// size := c.Writer.Size()
+		// reqID, _ := c.Get("requestID")
 
-		logger.Info("request completed",
-			"request_id: ", reqID.(string),
-			"method: ", method,
-			"path: ", path,
-			"ip: ", clientIP,
-			"status: ", status,
-			"size: ", size,
-			"latency: ", latency,
-		)
+		// logger.Info("request completed",
+		// 	"request_id: ", reqID.(string),
+		// 	"method: ", method,
+		// 	"path: ", path,
+		// 	"ip: ", clientIP,
+		// 	"status: ", status,
+		// 	"size: ", size,
+		// 	"latency: ", latency,
+		// )
 	}
 }
 
 func AuthorizationMiddleware(logger logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.GetHeader("Authorization")
-		clientID, err := authorization.ValidateJWT(token)
+		parts := strings.SplitN(token, " ", 2)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			logger.Error("Authorization header invalid format")
+			c.AbortWithStatusJSON(http.StatusUnauthorized,
+				gin.H{"error": "invalid access token"})
+			return
+		}
+
+		clientID, err := authorization.ValidateJWT(parts[1])
 		if err != nil {
 			logger.Error("token validation error", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized,
@@ -112,16 +119,15 @@ func JSONValidationMiddleware() gin.HandlerFunc {
 
 		switch {
 		case c.Request.Method == "POST" && c.Request.URL.Path == "/shorten":
-			v = &models.PostRequestJSON{}
-			fmt.Println(">>> Correct case is choosed")
+			v = &dto.HandlerPostRequest{}
 		case c.Request.Method == "PUT" && strings.HasPrefix(c.Request.URL.Path, "/shorten/"):
-			v = &models.PutRequestJSON{}
+			v = &dto.HandlerPutRequest{}
 		case c.Request.Method == "POST" && c.Request.URL.Path == "/register":
-			v = &models.PostUserRegistration{}
+			v = &dto.HandlerRegisterRequest{}
 		case c.Request.Method == "POST" && c.Request.URL.Path == "/login":
-			v = &models.PostUserLogin{}
+			v = &dto.HandlerLoginRequest{}
 		case c.Request.Method == "POST" && strings.HasPrefix(c.Request.URL.Path, "/refresh"):
-			v = &models.PostRefreshToken{}
+			v = &dto.HandlerRefreshRequest{}
 		default:
 			c.Next()
 			return
