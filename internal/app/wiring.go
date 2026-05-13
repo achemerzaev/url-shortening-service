@@ -22,13 +22,13 @@ func BuildHandlers(pgPool *pgxpool.Pool, rdb *redis.Client, logger logger.Logger
 	redisUserRepo := redisrepo.NewRedisUserRepository(rdb, logger)
 
 	// URL
-	urlRepo := repository.NewUrlRepository(pgPool, logger)
-	urlService := service.NewUrlService(urlRepo, redisURLRepo, logger)
+	urlRepo := repository.NewURLRepository(pgPool)
+	urlService := service.NewUrlService(urlRepo, redisURLRepo)
 	urlHandler := handler.NewUrlHandler(urlService, logger)
 
 	// User
-	userRepo := repository.NewUserRepository(pgPool, logger)
-	userService := service.NewUserService(userRepo, redisUserRepo, logger)
+	userRepo := repository.NewUserRepository(pgPool)
+	userService := service.NewUserService(userRepo, redisUserRepo)
 	userHandler := handler.NewUserHandler(userService, logger)
 
 	return Handlers{

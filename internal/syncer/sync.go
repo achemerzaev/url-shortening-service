@@ -1,6 +1,8 @@
 package syncer
 
 import (
+	"strconv"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
@@ -13,10 +15,8 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 
 	iter := rdb.Scan(ctx, 0, pattern, 0).Iterator()
 
-	updates := make([]struct {
-		ShortCode   string
-		AccessCount string
-	}, 0, 100)
+	updatedCodes := make([]string, 0)
+	updatedCounts := make([]int, 0)
 
 	for iter.Next(ctx) {
 		key := iter.Val()
@@ -30,51 +30,25 @@ func SyncRedisToPostgres(ctx context.Context, rdb *redis.Client, db *pgxpool.Poo
 		if err != nil {
 			continue
 		}
+		countInt, _ := strconv.Atoi(count)
 
-		updates = append(updates, struct {
-			ShortCode   string
-			AccessCount string
-		}{urlCode, count})
+		updatedCodes = append(updatedCodes, urlCode)
+		updatedCounts = append(updatedCounts, countInt)
 	}
 
 	if err := iter.Err(); err != nil {
 		return err
 	}
 
-	if len(updates) == 0 {
+	if len(updatedCodes) == 0 {
 		return nil
 	}
 
-	// build query string
-	var sb strings.Builder
-
-	sb.WriteString("UPDATE urls SET AccessCount = CASE ShortCode ")
-
-	for _, value := range updates {
-		sb.WriteString("WHEN '")
-		sb.WriteString(value.ShortCode)
-		sb.WriteString("' THEN ")
-		sb.WriteString(value.AccessCount)
-		sb.WriteByte(' ')
-	}
-
-	sb.WriteString("END WHERE ShortCode IN (")
-
-	i := 0
-	for _, value := range updates {
-		if i > 0 {
-			sb.WriteByte(',')
-		}
-		sb.WriteByte('\'')
-		sb.WriteString(value.ShortCode)
-		sb.WriteByte('\'')
-		i++
-	}
-
-	sb.WriteByte(')')
-	query := sb.String()
-
-	if _, err := db.Exec(ctx, query); err != nil {
+	if _, err := db.Exec(ctx,
+		`UPDATE urls AS u
+		SET accesscount = v.access_count
+		FROM unnest($1::text[], $2::int[]) AS v(shortcode, access_count)
+		WHERE u.shortcode = v.shortcode;`, updatedCodes, updatedCounts); err != nil {
 		return err
 	}
 

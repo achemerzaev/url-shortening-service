@@ -16,7 +16,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$(cat /run/secrets/db_user)\" -d \"$$(cat /run/secrets/db_name)\""]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -24,11 +24,13 @@ services:
   # --- миграции ---
   migrate:
     image: migrate/migrate
-    command: [
-      "-path", "/migrations",
-      "-database", "postgres://postgres:password@db:5432/postgres?sslmode=disable",
-      "up"
-    ]
+    entrypoint: ["/bin/sh", "-c"]
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+    command:
+      - 'USER=$$(cat /run/secrets/db_user) && PASS=$$(cat /run/secrets/db_password) && DB=$$(cat /run/secrets/db_name) && migrate -path /migrations -database "postgres://$$USER:$$PASS@db:5432/$$DB?sslmode=disable" up'
     volumes:
       - ./migrations:/migrations
     depends_on:
@@ -50,7 +52,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping"]
       interval: 10s
       timeout: 10s
       retries: 5

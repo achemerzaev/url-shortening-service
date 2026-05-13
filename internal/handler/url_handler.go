@@ -14,11 +14,11 @@ import (
 )
 
 type URLService interface {
-	ServicePost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error)
+	ServicePost(ctx context.Context, data models.URLInfo) (models.URLInfo, error)
 	ServiceGet(ctx context.Context, requestedCode string, ownerID int) (string, error)
-	ServicePut(ctx context.Context, requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error)
+	ServicePut(ctx context.Context, requestedCode string, longURL string, ownerID int) (models.URLInfo, error)
 	ServiceDelete(ctx context.Context, requestedCode string, ownerID int) error
-	ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.UrlInfo, error)
+	ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.URLInfo, error)
 }
 
 type URLHandler struct {
@@ -48,7 +48,7 @@ func (h *URLHandler) HandlerPost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	var newUrl models.UrlInfo
+	var newUrl models.URLInfo
 	newUrl.Url = userUrl.(*dto.HandlerPostRequest).URL
 	newUrl.OwnerID = clientID.(int)
 	newUrl, err := h.service.ServicePost(ctx, newUrl)
@@ -56,7 +56,7 @@ func (h *URLHandler) HandlerPost(c *gin.Context) {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.IndentedJSON(http.StatusOK, newUrl)
+	c.JSON(http.StatusOK, newUrl)
 }
 
 // @Summary Get short URL
@@ -76,13 +76,13 @@ func (h *URLHandler) HandlerGet(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	longUrl, err := h.service.ServiceGet(ctx, requestedCode, clientID.(int))
+	longURL, err := h.service.ServiceGet(ctx, requestedCode, clientID.(int))
 
 	if err != nil {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.Redirect(http.StatusFound, longUrl)
+	c.Redirect(http.StatusFound, longURL)
 }
 
 // @Summary Change long URL
@@ -111,7 +111,7 @@ func (h *URLHandler) HandlerPut(c *gin.Context) {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.IndentedJSON(http.StatusOK, newData)
+	c.JSON(http.StatusOK, newData)
 }
 
 // @Summary Delete short url
@@ -162,5 +162,5 @@ func (h *URLHandler) HandlerGetStats(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, statData)
+	c.JSON(http.StatusOK, statData)
 }

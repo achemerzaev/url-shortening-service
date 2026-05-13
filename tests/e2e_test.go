@@ -35,7 +35,7 @@ import (
 type TestApp struct {
 	Router   *gin.Engine
 	UserRepo *repository.UserRepository
-	UrlRepo  *repository.UrlRepository
+	UrlRepo  *repository.URLRepository
 }
 
 func setupTestApp(t *testing.T) *TestApp {
@@ -73,14 +73,14 @@ func setupTestApp(t *testing.T) *TestApp {
 
 	redisURLRepo := redisrepo.NewRedisURLRepository(redisClient, logger)
 
-	urlRepo := repository.NewUrlRepository(pool, logger)
-	urlService := service.NewUrlService(urlRepo, redisURLRepo, logger)
+	urlRepo := repository.NewURLRepository(pool)
+	urlService := service.NewUrlService(urlRepo, redisURLRepo)
 	urlHandler := handler.NewUrlHandler(urlService, logger)
 
 	redisUserRepo := redisrepo.NewRedisUserRepository(redisClient, logger)
 
-	userRepo := repository.NewUserRepository(pool, logger)
-	userService := service.NewUserService(userRepo, redisUserRepo, logger)
+	userRepo := repository.NewUserRepository(pool)
+	userService := service.NewUserService(userRepo, redisUserRepo)
 	userHandler := handler.NewUserHandler(userService, logger)
 
 	router := gin.New()
@@ -229,7 +229,7 @@ func TestUserHasNoAccess(t *testing.T) {
 	app.Router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusOK, w1.Code)
-	var data models.UrlInfo
+	var data models.URLInfo
 	_ = json.NewDecoder(w1.Body).Decode(&data)
 
 	// создание второго юзера
@@ -289,7 +289,7 @@ func TestCrudOperations(t *testing.T) {
 	app.Router.ServeHTTP(w1, req1)
 
 	require.Equal(t, http.StatusOK, w1.Code)
-	var data models.UrlInfo
+	var data models.URLInfo
 	_ = json.NewDecoder(w1.Body).Decode(&data)
 
 	require.NotEmpty(t, data.Id)
@@ -327,7 +327,7 @@ func TestCrudOperations(t *testing.T) {
 	req3.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	app.Router.ServeHTTP(w3, req3)
 
-	var requestedData models.UrlInfo
+	var requestedData models.URLInfo
 	_ = json.NewDecoder(w3.Body).Decode(&requestedData)
 	fmt.Print("date here: ", requestedData.UpdatedAt)
 	fmt.Print("################################################")
@@ -347,7 +347,7 @@ func TestCrudOperations(t *testing.T) {
 	req4.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	app.Router.ServeHTTP(w4, req4)
 
-	var changedData models.UrlInfo
+	var changedData models.URLInfo
 	_ = json.NewDecoder(w4.Body).Decode(&changedData)
 
 	require.Equal(t, http.StatusOK, w4.Code)
@@ -403,7 +403,7 @@ func TestNotInDatabase(t *testing.T) {
 	req2.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	app.Router.ServeHTTP(w2, req2)
 	require.Equal(t, http.StatusOK, w2.Code)
-	var data models.UrlInfo
+	var data models.URLInfo
 	_ = json.NewDecoder(w2.Body).Decode(&data)
 	shortCode := data.ShortCode
 
@@ -525,7 +525,7 @@ func TestInvalidJSON(t *testing.T) {
 	app.Router.ServeHTTP(w1, req1)
 	require.Equal(t, http.StatusOK, w1.Code)
 
-	var data models.UrlInfo
+	var data models.URLInfo
 	_ = json.NewDecoder(w1.Body).Decode(&data)
 
 	// изменение ссылки
@@ -559,7 +559,7 @@ func TestRedis(t *testing.T) {
 	req1 := httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "mail.ru"}`))
 	req1.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	app.Router.ServeHTTP(w1, req1)
-	var data models.UrlInfo
+	var data models.URLInfo
 	_ = json.NewDecoder(w1.Body).Decode(&data)
 
 	// редирект - после этого обращение к редису
@@ -603,7 +603,7 @@ func TestRedis(t *testing.T) {
 	req1 = httptest.NewRequest("POST", "/shorten", strings.NewReader(`{"url": "mail.ru"}`))
 	req1.Header.Set("Authorization", "Bearer "+tokens.AccessToken)
 	app.Router.ServeHTTP(w1, req1)
-	var data1 models.UrlInfo
+	var data1 models.URLInfo
 	_ = json.NewDecoder(w1.Body).Decode(&data1)
 
 	// гет статс для сохранения в редисе

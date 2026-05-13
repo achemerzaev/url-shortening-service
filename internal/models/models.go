@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type UrlInfo struct {
+type URLInfo struct {
 	Id          int       `json:"id"`
 	Url         string    `json:"url"`
 	ShortCode   string    `json:"shortcode"`

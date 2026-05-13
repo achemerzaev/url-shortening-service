@@ -28,7 +28,7 @@ type integrationServices struct {
 	userService   *UserService
 	urlService    *URLService
 	userRepo      *repository.UserRepository
-	urlRepo       *repository.UrlRepository
+	urlRepo       *repository.URLRepository
 	redisUserRepo *redisrepo.RedisUserRepository
 	redisURLRepo  *redisrepo.RedisURLRepository
 }
@@ -71,14 +71,14 @@ func setupIntegrationServices(t *testing.T) *integrationServices {
 		pool.Close()
 	})
 
-	userRepo := repository.NewUserRepository(pool, log)
-	urlRepo := repository.NewUrlRepository(pool, log)
+	userRepo := repository.NewUserRepository(pool)
+	urlRepo := repository.NewURLRepository(pool)
 	redisUserRepo := redisrepo.NewRedisUserRepository(redisClient, log)
 	redisURLRepo := redisrepo.NewRedisURLRepository(redisClient, log)
 
 	return &integrationServices{
-		userService:   NewUserService(userRepo, redisUserRepo, log),
-		urlService:    NewUrlService(urlRepo, redisURLRepo, log),
+		userService:   NewUserService(userRepo, redisUserRepo),
+		urlService:    NewUrlService(urlRepo, redisURLRepo),
 		userRepo:      userRepo,
 		urlRepo:       urlRepo,
 		redisUserRepo: redisUserRepo,
@@ -200,7 +200,7 @@ func TestURLServiceIntegration_CRUDAndCacheFlow(t *testing.T) {
 	ctx := context.Background()
 	owner := createIntegrationUser(t, svc.userService, "owner@example.com")
 
-	createdURL, err := svc.urlService.ServicePost(ctx, models.UrlInfo{
+	createdURL, err := svc.urlService.ServicePost(ctx, models.URLInfo{
 		Url:     "example.com",
 		OwnerID: owner.Id,
 	})
@@ -250,7 +250,7 @@ func TestURLServiceIntegration_ErrorCases(t *testing.T) {
 	owner := createIntegrationUser(t, svc.userService, "owner-errors@example.com")
 	otherUser := createIntegrationUser(t, svc.userService, "other-errors@example.com")
 
-	createdURL, err := svc.urlService.ServicePost(ctx, models.UrlInfo{
+	createdURL, err := svc.urlService.ServicePost(ctx, models.URLInfo{
 		Url:     "forbidden.example.com",
 		OwnerID: owner.Id,
 	})

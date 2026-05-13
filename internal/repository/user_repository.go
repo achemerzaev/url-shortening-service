@@ -7,19 +7,17 @@ import (
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
-	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"context"
 	"errors"
 )
 
 type UserRepository struct {
-	db     *pgxpool.Pool
-	logger logger.Logger
+	db *pgxpool.Pool
 }
 
-func NewUserRepository(db *pgxpool.Pool, logger logger.Logger) *UserRepository {
-	return &UserRepository{db: db, logger: logger}
+func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+	return &UserRepository{db: db}
 }
 
 func (r *UserRepository) RepoInsertUser(ctx context.Context, newUser models.User) (models.User, error) {
@@ -41,13 +39,13 @@ func (r *UserRepository) RepoInsertUser(ctx context.Context, newUser models.User
 }
 
 func (r *UserRepository) RepoRetrieveUser(ctx context.Context, email string) (models.User, error) {
-	var Credentials models.User
+	var credentials models.User
 	err := r.db.QueryRow(ctx,
 		"SELECT * FROM url_users WHERE Email = $1",
-		email).Scan(&Credentials.Id, &Credentials.Name, &Credentials.Email, &Credentials.Password)
+		email).Scan(&credentials.Id, &credentials.Name, &credentials.Email, &credentials.Password)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Credentials, appErr.ErrInvalidCredentials
+		return credentials, appErr.ErrInvalidCredentials
 	}
 
-	return Credentials, err
+	return credentials, err
 }

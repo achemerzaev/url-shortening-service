@@ -5,7 +5,6 @@ import (
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
-	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"context"
 	"crypto/rand"
@@ -16,32 +15,32 @@ import (
 )
 
 type URLRepository interface {
-	RepositoryPost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error)
-	RepositoryGet(ctx context.Context, requestedCode string) (models.UrlInfo, error)
-	RepositoryUpdate(ctx context.Context, requestedCode string, longurl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
+	RepositoryPost(ctx context.Context, data models.URLInfo) (models.URLInfo, error)
+	RepositoryGet(ctx context.Context, requestedCode string) (models.URLInfo, error)
+	RepositoryUpdate(ctx context.Context, requestedCode string, longURL string, updatedAt time.Time, ownerID int) (models.URLInfo, error)
 	RepositoryDelete(ctx context.Context, requestedCode string, ownerID int) error
-	RepositoryGetStats(ctx context.Context, requestedCode string) (models.UrlInfo, error)
+	RepositoryGetStats(ctx context.Context, requestedCode string) (models.URLInfo, error)
 }
 
 type RedisURLRepository interface {
-	SaveUrl(ctx context.Context, data models.UrlInfo) error
+	SaveUrl(ctx context.Context, data models.URLInfo) error
 	GetUrl(ctx context.Context, shortCode string, ownerID int) (string, error)
-	GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.UrlInfo, error)
-	UpdateUrl(ctx context.Context, requestedCode, newLongUrl string, updatedAt time.Time, ownerID int) (models.UrlInfo, error)
+	IncrementCounter(ctx context.Context, shortCode string) error
+	GetUrlStats(ctx context.Context, shortCode string, ownerID int) (models.URLInfo, error)
+	UpdateUrl(ctx context.Context, requestedCode, newlongURL string, updatedAt time.Time, ownerID int) (models.URLInfo, error)
 	DeleteUrl(ctx context.Context, shortCode string, ownerID int) error
 }
 
 type URLService struct {
 	repo      URLRepository
 	redisrepo RedisURLRepository
-	logger    logger.Logger
 }
 
-func NewUrlService(r URLRepository, redisr RedisURLRepository, logger logger.Logger) *URLService {
-	return &URLService{repo: r, redisrepo: redisr, logger: logger}
+func NewUrlService(r URLRepository, redisr RedisURLRepository) *URLService {
+	return &URLService{repo: r, redisrepo: redisr}
 }
 
-func (s *URLService) ServicePost(ctx context.Context, data models.UrlInfo) (models.UrlInfo, error) {
+func (s *URLService) ServicePost(ctx context.Context, data models.URLInfo) (models.URLInfo, error) {
 	data.CreatedAt = time.Now()
 	data.UpdatedAt = data.CreatedAt
 	code, err := GenerateShortCode()
@@ -63,69 +62,88 @@ const chars = "1234567890abcdefghijklmnopqrstuvwxyz"
 
 func GenerateShortCode() (string, error) {
 	length := 6
-	ran_str := make([]byte, length)
+	randomString := make([]byte, length)
 
 	// Generating Random string
-	for i := range ran_str {
+	for i := range randomString {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
 		if err != nil {
 			return "", err
 		}
-		ran_str[i] = chars[n.Int64()]
+		randomString[i] = chars[n.Int64()]
 	}
-	return string(ran_str), nil
+	return string(randomString), nil
 }
 
 func (s *URLService) ServiceGet(ctx context.Context, requestedCode string, ownerID int) (string, error) {
-	var newData models.UrlInfo
-	longUrl, err := s.redisrepo.GetUrl(ctx, requestedCode, ownerID)
-	if err != nil && errors.Is(err, appErr.ErrForbidden) {
+	var newData models.URLInfo
+	longURL, err := s.redisrepo.GetUrl(ctx, requestedCode, ownerID)
+	if err != nil {
+		if !errors.Is(err, appErr.ErrNotFound) {
+			if errors.Is(err, appErr.ErrForbidden) {
+				return "", appErr.ErrForbidden
+			} else {
+				return "", err
+			}
+		}
+	} else {
+		err = s.redisrepo.IncrementCounter(ctx, requestedCode)
+		return longURL, err
+	}
+
+	newData, err = s.repo.RepositoryGet(ctx, requestedCode)
+	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
 		return "", appErr.ErrForbidden
 	} else if err != nil {
-		newData, err = s.repo.RepositoryGet(ctx, requestedCode)
-		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return "", appErr.ErrForbidden
-		} else if err != nil {
-			if errors.Is(err, appErr.ErrNotFound) {
-				return "", err
-			} else {
-				return "", fmt.Errorf("service get repo internal error: %w", err)
-			}
+		if errors.Is(err, appErr.ErrNotFound) {
+			return "", err
+		} else {
+			return "", fmt.Errorf("service get repo internal error: %w", err)
 		}
-		err = s.redisrepo.SaveUrl(ctx, newData)
-		if err != nil {
-			return "", fmt.Errorf("service get save to redis error: %w", err)
-		}
-		longUrl = newData.Url
 	}
+	newData.AccessCount += 1
+	err = s.redisrepo.SaveUrl(ctx, newData)
+	if err != nil {
+		return "", fmt.Errorf("service get save to redis error: %w", err)
+	}
+	longURL = newData.Url
 
-	return longUrl, nil
+	return longURL, nil
 }
 
-func (s *URLService) ServicePut(ctx context.Context, requestedCode string, longUrl string, ownerID int) (models.UrlInfo, error) {
-	if !strings.HasPrefix(longUrl, "http://") && !strings.HasPrefix(longUrl, "https://") {
-		longUrl = "https://" + longUrl
+func (s *URLService) ServicePut(ctx context.Context, requestedCode string, longURL string, ownerID int) (models.URLInfo, error) {
+	if !strings.HasPrefix(longURL, "http://") && !strings.HasPrefix(longURL, "https://") {
+		longURL = "https://" + longURL
 	}
 	updatedAt := time.Now()
-	newData, err := s.redisrepo.UpdateUrl(ctx, requestedCode, longUrl, updatedAt, ownerID)
-	if err != nil && errors.Is(err, appErr.ErrForbidden) {
-		return newData, appErr.ErrForbidden
-	} else if err != nil {
-		newData, err = s.repo.RepositoryUpdate(ctx, requestedCode, longUrl, updatedAt, ownerID)
-		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return newData, appErr.ErrForbidden
-		} else if err != nil {
-			if errors.Is(err, appErr.ErrNotFound) {
-				return newData, appErr.ErrNotFound
-			} else {
-				return newData, fmt.Errorf("service put repository update error: %w", err)
-			}
-		}
-		err = s.redisrepo.SaveUrl(ctx, newData)
-		if err != nil {
-			return newData, fmt.Errorf("service put save to redis error: %w", err)
+	cachedData, err := s.redisrepo.UpdateUrl(ctx, requestedCode, longURL, updatedAt, ownerID)
+	if err != nil && !errors.Is(err, appErr.ErrNotFound) {
+		if errors.Is(err, appErr.ErrForbidden) {
+			return cachedData, appErr.ErrForbidden
+		} else {
+			return cachedData, err
 		}
 	}
+	cacheHit := err == nil
+
+	newData, err := s.repo.RepositoryUpdate(ctx, requestedCode, longURL, updatedAt, ownerID)
+	if err != nil {
+		if errors.Is(err, appErr.ErrNotFound) {
+			return newData, appErr.ErrNotFound
+		} else if errors.Is(err, appErr.ErrForbidden) {
+			return newData, appErr.ErrForbidden
+		} else {
+			return newData, fmt.Errorf("service put repository update error: %w", err)
+		}
+	}
+	if cacheHit {
+		newData.AccessCount = cachedData.AccessCount
+	}
+	err = s.redisrepo.SaveUrl(ctx, newData)
+	if err != nil {
+		return newData, fmt.Errorf("service put save to redis error: %w", err)
+	}
+
 	return newData, nil
 }
 
@@ -139,9 +157,7 @@ func (s *URLService) ServiceDelete(ctx context.Context, requestedCode string, ow
 	}
 	err = s.repo.RepositoryDelete(ctx, requestedCode, ownerID)
 	if err != nil {
-		if errors.Is(err, appErr.ErrForbidden) {
-			return appErr.ErrForbidden
-		} else if errors.Is(err, appErr.ErrNotFound) {
+		if errors.Is(err, appErr.ErrNotFound) {
 			return appErr.ErrNotFound
 		} else {
 			return fmt.Errorf("service delete repo error: %w", err)
@@ -150,26 +166,32 @@ func (s *URLService) ServiceDelete(ctx context.Context, requestedCode string, ow
 	return nil
 }
 
-func (s *URLService) ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.UrlInfo, error) {
-	var newData models.UrlInfo
+func (s *URLService) ServiceGetStats(ctx context.Context, requestedCode string, ownerID int) (models.URLInfo, error) {
+	var newData models.URLInfo
 	newData, err := s.redisrepo.GetUrlStats(ctx, requestedCode, ownerID)
+	if err == nil {
+		return newData, nil
+	}
+	if !errors.Is(err, appErr.ErrNotFound) {
+		if errors.Is(err, appErr.ErrForbidden) {
+			return newData, appErr.ErrForbidden
+		}
+		return newData, fmt.Errorf("service get stats redis error: %w", err)
+	}
+
+	newData, err = s.repo.RepositoryGetStats(ctx, requestedCode)
 	if newData.OwnerID != 0 && newData.OwnerID != ownerID {
 		return newData, appErr.ErrForbidden
 	} else if err != nil {
-		newData, err = s.repo.RepositoryGetStats(ctx, requestedCode)
-		if newData.OwnerID != 0 && newData.OwnerID != ownerID {
-			return newData, appErr.ErrForbidden
-		} else if err != nil {
-			if errors.Is(err, appErr.ErrNotFound) {
-				return newData, appErr.ErrNotFound
-			} else {
-				return newData, fmt.Errorf("service get stats repo error: %w", err)
-			}
+		if errors.Is(err, appErr.ErrNotFound) {
+			return newData, appErr.ErrNotFound
+		} else {
+			return newData, fmt.Errorf("service get stats repo error: %w", err)
 		}
-		err = s.redisrepo.SaveUrl(ctx, newData)
-		if err != nil {
-			return newData, fmt.Errorf("service get stats redis save err: %w", err)
-		}
+	}
+	err = s.redisrepo.SaveUrl(ctx, newData)
+	if err != nil {
+		return newData, fmt.Errorf("service get stats redis save err: %w", err)
 	}
 
 	return newData, nil

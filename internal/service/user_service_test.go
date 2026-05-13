@@ -7,7 +7,6 @@ import (
 
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
-	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,8 +72,7 @@ func setupusersvc() *UserService {
 		db: make(map[string]RedisRow),
 	}
 
-	logger, _ := logger.New("debug")
-	return NewUserService(repo, redisrepo, logger)
+	return NewUserService(repo, redisrepo)
 }
 
 func TestServiceRegister_Success(t *testing.T) {
