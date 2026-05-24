@@ -57,7 +57,7 @@ func (h *UserHandler) HandlerRegister(c *gin.Context) {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, tokens)
+	c.JSON(http.StatusCreated, tokens)
 
 }
 
@@ -86,7 +86,7 @@ func (h *UserHandler) HandlerLogin(c *gin.Context) {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.IndentedJSON(http.StatusOK, tokens)
+	c.JSON(http.StatusOK, tokens)
 }
 
 // @Summary Update Refresh token
@@ -110,26 +110,26 @@ func (h *UserHandler) HandlerRefresh(c *gin.Context) {
 		ErrorHandler(c, err, h.logger)
 		return
 	}
-	c.IndentedJSON(http.StatusCreated, tokens)
+	c.JSON(http.StatusCreated, tokens)
 }
 
 func ErrorHandler(c *gin.Context, err error, logger logger.Logger) {
 
 	switch {
 	case errors.Is(err, appErr.ErrNotFound):
-		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 	case errors.Is(err, appErr.ErrEmailExists):
-		c.IndentedJSON(http.StatusConflict, gin.H{"error": "email already exists"})
+		c.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
 	case errors.Is(err, appErr.ErrInvalidCredentials):
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 	case errors.Is(err, appErr.ErrInvalidToken):
-		c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "session expired, please log in again"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session expired, please log in again"})
 	case errors.Is(err, appErr.ErrForbidden):
-		c.IndentedJSON(http.StatusForbidden, gin.H{"error": "user dont own this resource"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "user dont own this resource"})
 	case errors.Is(err, appErr.ErrGeneratingJWT):
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "authorization error on server side"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "authorization error on server side"})
 	default:
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 	}
 	logger.Error("Error: ", err)
 }

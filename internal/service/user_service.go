@@ -8,7 +8,6 @@ import (
 	"github.com/achemerzaev/url-shortening-service/internal/authorization"
 	"github.com/achemerzaev/url-shortening-service/internal/models"
 	appErr "github.com/achemerzaev/url-shortening-service/pkg/errors"
-	"github.com/achemerzaev/url-shortening-service/pkg/logger"
 
 	"context"
 	"errors"
@@ -29,11 +28,10 @@ type RedisUserRepository interface {
 type UserService struct {
 	repo      UserRepository
 	redisrepo RedisUserRepository
-	logger    logger.Logger
 }
 
-func NewUserService(r UserRepository, redisr RedisUserRepository, logger logger.Logger) *UserService {
-	return &UserService{repo: r, redisrepo: redisr, logger: logger}
+func NewUserService(r UserRepository, redisr RedisUserRepository) *UserService {
+	return &UserService{repo: r, redisrepo: redisr}
 }
 
 func (s *UserService) ServiceRegister(ctx context.Context, newUser models.User) (models.User, models.Tokens, error) {

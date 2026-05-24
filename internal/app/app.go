@@ -61,7 +61,7 @@ func Run() {
 	router := SetupRouter(handlers, logger)
 
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         cfg.App.Addr,
 		Handler:      router,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,

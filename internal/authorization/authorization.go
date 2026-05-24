@@ -18,13 +18,13 @@ var jwtKey = []byte("bigsecret") // []byte(os.Getenv("JWT_SECRET"))
 // Включает идентификатор пользователя и время жизни токена - 1 час. В
 // Используется при авторизации после входа в систему. Возвращает токен или ошибку
 
-func GenerateJWT(userId int, ttl time.Duration) (string, error) {
+func GenerateJWT(userID int, ttl time.Duration) (string, error) {
 	jti := make([]byte, 16)
 	if _, err := rand.Read(jti); err != nil {
 		return "", err
 	}
 	claims := jwt.MapClaims{
-		"user_id": userId,
+		"user_id": userID,
 		"exp":     time.Now().Add(ttl).Unix(),
 		"jti":     hex.EncodeToString(jti),
 	}
