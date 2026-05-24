@@ -1,18 +1,18 @@
 # URL Shortening Service
 
-A Go service for creating and managing short links. It includes JWT authentication, PostgreSQL storage, Redis caching, periodic Redis-to-Postgres sync, Prometheus metrics, and Grafana dashboards.
+Go-сервис для создания и управления короткими ссылками. В проекте есть JWT-авторизация, PostgreSQL, Redis-кеш, синхронизация Redis с PostgreSQL, Prometheus-метрики и Grafana.
 
-## Stack
+## Стек
 
 - Go, Gin
 - PostgreSQL
 - Redis
 - Docker Compose
-- Prometheus and Grafana
+- Prometheus и Grafana
 
-## Run
+## Запуск
 
-Create the required secret files in `secrets/`:
+Создайте нужные secret-файлы в папке `secrets/`:
 
 ```text
 db_user.txt
@@ -23,24 +23,24 @@ grafana_admin_user.txt
 grafana_admin_password.txt
 ```
 
-Then start the service:
+Запустите сервис:
 
 ```bash
 docker compose up --build
 ```
 
-The API will be available at `http://localhost:8080`.
+API будет доступно на `http://localhost:8080`.
 
-Useful URLs:
+Полезные адреса:
 
 - API: `http://localhost:8080`
-- Metrics: `http://localhost:8080/metrics`
+- Метрики: `http://localhost:8080/metrics`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
 
-## API Examples
+## Примеры запросов
 
-Register:
+Регистрация:
 
 ```bash
 curl -X POST http://localhost:8080/register \
@@ -48,7 +48,7 @@ curl -X POST http://localhost:8080/register \
   -d '{"name":"Alice","email":"alice@example.com","password":"secret"}'
 ```
 
-Login:
+Логин:
 
 ```bash
 curl -X POST http://localhost:8080/login \
@@ -56,13 +56,13 @@ curl -X POST http://localhost:8080/login \
   -d '{"email":"alice@example.com","password":"secret"}'
 ```
 
-Both commands return `access_token` and `refresh_token`. Use the access token for protected endpoints:
+Оба запроса возвращают `access_token` и `refresh_token`. Access token нужен для защищенных эндпоинтов:
 
 ```bash
 TOKEN="paste_access_token_here"
 ```
 
-Create short URL:
+Создать короткую ссылку:
 
 ```bash
 curl -X POST http://localhost:8080/shorten \
@@ -71,21 +71,21 @@ curl -X POST http://localhost:8080/shorten \
   -d '{"url":"https://example.com"}'
 ```
 
-Open short URL:
+Открыть короткую ссылку:
 
 ```bash
 curl -i -H "Authorization: Bearer $TOKEN" \
   http://localhost:8080/shorten/abc123
 ```
 
-Get URL stats:
+Получить статистику:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8080/shorten/abc123/stats
 ```
 
-Update URL:
+Обновить ссылку:
 
 ```bash
 curl -X PUT http://localhost:8080/shorten/abc123 \
@@ -94,14 +94,14 @@ curl -X PUT http://localhost:8080/shorten/abc123 \
   -d '{"url":"https://go.dev"}'
 ```
 
-Delete URL:
+Удалить ссылку:
 
 ```bash
 curl -X DELETE -H "Authorization: Bearer $TOKEN" \
   http://localhost:8080/shorten/abc123
 ```
 
-Refresh tokens:
+Обновить токены:
 
 ```bash
 curl -X POST http://localhost:8080/refresh \
@@ -109,25 +109,25 @@ curl -X POST http://localhost:8080/refresh \
   -d '{"refresh_token":"paste_refresh_token_here"}'
 ```
 
-## Tests
+## Тесты
 
-Run unit and e2e tests:
+Unit и e2e тесты:
 
 ```bash
 go test ./...
 ```
 
-Run service integration tests:
+Интеграционные тесты сервисного слоя:
 
 ```bash
 go test -tags=integration ./internal/service
 ```
 
-## Performance
+## Производительность
 
-Load test result:
+Результат нагрузочного теста:
 
 - RPS: 2000
-- Average latency: 47.5 ms
-- p90 latency: 109 ms
-- p95 latency: 131 ms
+- Средняя задержка: 47.5 ms
+- p90: 109 ms
+- p95: 131 ms

@@ -7,8 +7,8 @@ export const options = {
 };
 
 export default function () {
-  const name = `user__${__VU}_${__ITER}${__ITER}`;
-  const email = `user__${__VU}_${__ITER}${__ITER}@test.com`;
+  const name = `user__${__VU}_${__ITER}`;
+  const email = `user__${__VU}_${__ITER}$@test.com`;
   const password = '12345678';
 
   // 1. register
